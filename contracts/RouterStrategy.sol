@@ -60,6 +60,10 @@ contract RouterStrategy is BaseStrategy {
         return balanceOfWant().add(valueOfInvestment());
     }
 
+    function delegatedAssets() external view override returns (uint256) {
+        return vault.strategies(address(this)).totalDebt;
+    }
+
     function prepareReturn(uint256 _debtOutstanding)
         internal
         override
