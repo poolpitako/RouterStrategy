@@ -23,11 +23,11 @@ def test_move_funds_to_042(yvweth_032, yvweth_042, strategy, gov, weth, weth_wha
 
     # Send profit to 042
     prev_value = strategy.valueOfInvestment()
-    weth.transfer(yvweth_042, Wei("100 ether"), {"from": weth_whale})
+    weth.transfer(yvweth_042, Wei("10 ether"), {"from": weth_whale})
     assert strategy.valueOfInvestment() > prev_value
 
     strategy.harvest({"from": gov})
-    chain.sleep(3600 * 8)
+    chain.sleep(3600 * 11)
     chain.mine(1)
 
     total_gain = yvweth_032.strategies(strategy).dict()["totalGain"]
