@@ -73,18 +73,20 @@ contract RouterStrategy is BaseStrategy {
             uint256 _debtPayment
         )
     {
-        uint256 balanceInit = balanceOfWant();
+        uint256 prevBalance = balanceOfWant();
         _takeVaultProfit();
-        uint256 balanceOfWant = balanceOfWant();
+        uint256 postBalance = balanceOfWant();
 
-        if (balanceOfWant > balanceInit) {
-            _profit = balanceOfWant.sub(balanceInit);
+        if (postBalance > prevBalance) {
+            _profit = postBalance.sub(prevBalance);
         }
 
         // if the vault is claiming repayment of debt
         if (_debtOutstanding > 0) {
             uint256 _amountFreed = 0;
-            (_amountFreed, _loss) = liquidatePosition(_debtOutstanding);
+            (_amountFreed, _loss) = liquidatePosition(
+                _debtOutstanding.add(postBalance)
+            );
             _debtPayment = Math.min(_debtOutstanding, _amountFreed);
             if (_loss > 0) {
                 _profit = 0;
@@ -117,7 +119,7 @@ contract RouterStrategy is BaseStrategy {
         uint256 toWithdraw = _amountNeeded.sub(balance);
         _withdrawFromYVault(toWithdraw);
 
-        uint256 totalAssets = want.balanceOf(address(this));
+        uint256 totalAssets = balanceOfWant();
         if (_amountNeeded > totalAssets) {
             _liquidatedAmount = totalAssets;
             _loss = _amountNeeded.sub(totalAssets);
@@ -131,11 +133,10 @@ contract RouterStrategy is BaseStrategy {
             return;
         }
 
+        uint256 _balanceOfYShares = yVault.balanceOf(address(this));
         uint256 sharesToWithdraw =
-            Math.min(
-                _investmentTokenToYShares(_amount),
-                yVault.balanceOf(address(this))
-            );
+            Math.min(_investmentTokenToYShares(_amount), _balanceOfYShares);
+
         if (sharesToWithdraw == 0) {
             return;
         }
@@ -148,9 +149,12 @@ contract RouterStrategy is BaseStrategy {
         override
         returns (uint256 _amountFreed)
     {
-        (_amountFreed, ) = liquidatePosition(
-            vault.strategies(address(this)).totalDebt
-        );
+        return
+            yVault.withdraw(
+                yVault.balanceOf(address(this)),
+                address(this),
+                maxLoss
+            );
     }
 
     function prepareMigration(address _newStrategy) internal override {
@@ -164,8 +168,12 @@ contract RouterStrategy is BaseStrategy {
         internal
         view
         override
-        returns (address[] memory)
-    {}
+        returns (address[] memory ret)
+    {
+        ret = new address[](1);
+        ret[0] = address(yVault);
+        return ret;
+    }
 
     function ethToWant(uint256 _amtInWei)
         public

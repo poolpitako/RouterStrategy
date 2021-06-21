@@ -2,7 +2,7 @@ import pytest
 from brownie import Contract, ZERO_ADDRESS, Wei, chain
 
 
-def test_move_funds_to_042(yvweth_032, yvweth_042, strategy, gov, weth, weth_whale):
+def test_profit_revoke(yvweth_032, yvweth_042, strategy, gov, weth, weth_whale):
 
     # Move all funds to the new strat
     for i in range(0, 20):
@@ -26,6 +26,7 @@ def test_move_funds_to_042(yvweth_032, yvweth_042, strategy, gov, weth, weth_wha
     weth.transfer(yvweth_042, Wei("100 ether"), {"from": weth_whale})
     assert strategy.valueOfInvestment() > prev_value
 
+    yvweth_032.revokeStrategy(strategy, {"from": gov})
     strategy.harvest({"from": gov})
     chain.sleep(3600 * 8)
     chain.mine(1)
@@ -33,13 +34,5 @@ def test_move_funds_to_042(yvweth_032, yvweth_042, strategy, gov, weth, weth_wha
     total_gain = yvweth_032.strategies(strategy).dict()["totalGain"]
     assert total_gain > 0
     assert yvweth_032.strategies(strategy).dict()["totalLoss"] == 0
-    assert False
-
-    yvweth_032.revokeStrategy(strategy, {"from": gov})
-    strategy.harvest({"from": gov})
-    chain.sleep(3600 * 8)
-    chain.mine(1)
-
-    assert yvweth_032.strategies(strategy).dict()["totalGain"] == total_gain
-    assert yvweth_032.strategies(strategy).dict()["totalLoss"] == 0
-    assert yvweth_032.strategies(strategy).dict()["totalDebt"] == 0
+    assert strategy.balanceOfWant() == 0
+    assert strategy.valueOfInvestment() == 0
