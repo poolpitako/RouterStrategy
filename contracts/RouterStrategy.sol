@@ -200,20 +200,6 @@ contract RouterStrategy is BaseStrategy {
         maxLoss = _maxLoss;
     }
 
-    function _takeVaultProfit() internal {
-        uint256 _debt = vault.strategies(address(this)).totalDebt;
-        uint256 _valueInVault = valueOfInvestment();
-        if (_debt >= _valueInVault) {
-            return;
-        }
-
-        uint256 _profit = _valueInVault.sub(_debt);
-        uint256 _ySharesToWithdraw = _investmentTokenToYShares(_profit);
-        if (_ySharesToWithdraw > 0) {
-            yVault.withdraw(_ySharesToWithdraw, address(this), maxLoss);
-        }
-    }
-
     function _checkAllowance(
         address _contract,
         address _token,
