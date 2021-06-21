@@ -33,7 +33,6 @@ def test_move_funds_to_042(yvweth_032, yvweth_042, strategy, gov, weth, weth_wha
     total_gain = yvweth_032.strategies(strategy).dict()["totalGain"]
     assert total_gain > 0
     assert yvweth_032.strategies(strategy).dict()["totalLoss"] == 0
-    assert False
 
     yvweth_032.revokeStrategy(strategy, {"from": gov})
     strategy.harvest({"from": gov})
