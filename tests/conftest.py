@@ -38,6 +38,16 @@ def keeper(accounts):
 
 
 @pytest.fixture
+def yvdai_030():
+    yield Contract("0x19D3364A399d251E894aC732651be8B0E4e85001")
+
+
+@pytest.fixture
+def yvdai_042():
+    yield Contract("0x63739d137EEfAB1001245A8Bd1F3895ef3e186E7")
+
+
+@pytest.fixture
 def yvweth_032():
     yield Contract("0xa9fE4601811213c340e850ea305481afF02f5b28")
 
@@ -45,6 +55,11 @@ def yvweth_032():
 @pytest.fixture
 def yvweth_042():
     yield Contract("0xa258C4606Ca8206D8aA700cE2143D7db854D168c")
+
+
+@pytest.fixture
+def dai_whale(accounts):
+    yield accounts.at("0x5d3a536e4d6dbd6114cc1ead35777bab948e3643", True)
 
 
 @pytest.fixture
@@ -66,6 +81,11 @@ def amount(accounts, token, user):
     reserve = accounts.at("0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643", force=True)
     token.transfer(user, amount, {"from": reserve})
     yield amount
+
+
+@pytest.fixture
+def dai():
+    yield Contract("0x6b175474e89094c44da98b954eedeac495271d0f")
 
 
 @pytest.fixture
@@ -91,23 +111,23 @@ def vault(pm, gov, rewards, guardian, management, token):
 
 
 @pytest.fixture
-def strategy(strategist, keeper, yvweth_032, yvweth_042, RouterStrategy, gov):
+def dai_strategy(strategist, keeper, yvdai_030, yvdai_042, RouterStrategy030, gov):
     strategy = strategist.deploy(
-        RouterStrategy, yvweth_032, yvweth_042, "Route yvWETH 042"
+        RouterStrategy030, yvdai_030, yvdai_042, "Route yvDAI 042"
     )
     strategy.setKeeper(keeper)
 
     for i in range(0, 20):
-        strat_address = yvweth_032.withdrawalQueue(i)
+        strat_address = yvdai_030.withdrawalQueue(i)
         if ZERO_ADDRESS == strat_address:
             break
 
-        yvweth_032.updateStrategyDebtRatio(strat_address, 0, {"from": gov})
+        yvdai_030.updateStrategyDebtRatio(strat_address, 0, {"from": gov})
 
-    yvweth_032.setPerformanceFee(0, {"from": gov})
-    yvweth_032.setManagementFee(0, {"from": gov})
-    yvweth_032.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
-    yvweth_032.setDepositLimit(0, {"from": gov})
+    yvdai_030.setPerformanceFee(0, {"from": gov})
+    yvdai_030.setManagementFee(0, {"from": gov})
+    yvdai_030.addStrategy(strategy, 9_924, 0, 0, {"from": gov})
+    yvdai_030.setDepositLimit(0, {"from": gov})
 
     yield strategy
 

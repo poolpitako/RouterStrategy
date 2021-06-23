@@ -28,7 +28,7 @@ interface IVault is IERC20 {
     ) external returns (uint256);
 }
 
-contract RouterStrategy is BaseStrategy {
+contract RouterStrategy030 is BaseStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -46,7 +46,11 @@ contract RouterStrategy is BaseStrategy {
     }
 
     modifier onlyManagement() {
-        require(msg.sender == governance() || msg.sender == vault.management());
+        require(
+            msg.sender == governance() ||
+                msg.sender ==
+                address(0x16388463d60FFE0661Cf7F1f31a7D658aC790ff7)
+        );
         _;
     }
 
@@ -63,10 +67,6 @@ contract RouterStrategy is BaseStrategy {
 
     function estimatedTotalAssets() public view override returns (uint256) {
         return balanceOfWant().add(valueOfInvestment());
-    }
-
-    function delegatedAssets() external view override returns (uint256) {
-        return vault.strategies(address(this)).totalDebt;
     }
 
     function prepareReturn(uint256 _debtOutstanding)
@@ -160,19 +160,6 @@ contract RouterStrategy is BaseStrategy {
         yVault.withdraw(sharesToWithdraw, address(this), maxLoss);
     }
 
-    function liquidateAllPositions()
-        internal
-        override
-        returns (uint256 _amountFreed)
-    {
-        return
-            yVault.withdraw(
-                yVault.balanceOf(address(this)),
-                address(this),
-                maxLoss
-            );
-    }
-
     function prepareMigration(address _newStrategy) internal override {
         IERC20(yVault).safeTransfer(
             _newStrategy,
@@ -189,16 +176,6 @@ contract RouterStrategy is BaseStrategy {
         ret = new address[](1);
         ret[0] = address(yVault);
         return ret;
-    }
-
-    function ethToWant(uint256 _amtInWei)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        return _amtInWei;
     }
 
     function setMaxLoss(uint256 _maxLoss) public onlyManagement {
