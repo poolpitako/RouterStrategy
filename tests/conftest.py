@@ -1,6 +1,5 @@
 import pytest
-from brownie import config
-from brownie import Contract
+from brownie import config, Contract, ZERO_ADDRESS
 
 
 @pytest.fixture
@@ -39,6 +38,21 @@ def keeper(accounts):
 
 
 @pytest.fixture
+def yvweth_032():
+    yield Contract("0xa9fE4601811213c340e850ea305481afF02f5b28")
+
+
+@pytest.fixture
+def yvweth_042():
+    yield Contract("0xa258C4606Ca8206D8aA700cE2143D7db854D168c")
+
+
+@pytest.fixture
+def weth_whale(accounts):
+    yield accounts.at("0xc1aae9d18bbe386b102435a8632c8063d31e747c", True)
+
+
+@pytest.fixture
 def token():
     token_address = "0x6b175474e89094c44da98b954eedeac495271d0f"  # this should be the address of the ERC-20 used by the strategy/vault (DAI)
     yield Contract(token_address)
@@ -56,8 +70,7 @@ def amount(accounts, token, user):
 
 @pytest.fixture
 def weth():
-    token_address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-    yield Contract(token_address)
+    yield Contract("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
 
 
 @pytest.fixture
@@ -78,10 +91,24 @@ def vault(pm, gov, rewards, guardian, management, token):
 
 
 @pytest.fixture
-def strategy(strategist, keeper, vault, Strategy, gov):
-    strategy = strategist.deploy(Strategy, vault)
+def strategy(strategist, keeper, yvweth_032, yvweth_042, RouterStrategy, gov):
+    strategy = strategist.deploy(
+        RouterStrategy, yvweth_032, yvweth_042, "Route yvWETH 042"
+    )
     strategy.setKeeper(keeper)
-    vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 1_000, {"from": gov})
+
+    for i in range(0, 20):
+        strat_address = yvweth_032.withdrawalQueue(i)
+        if ZERO_ADDRESS == strat_address:
+            break
+
+        yvweth_032.updateStrategyDebtRatio(strat_address, 0, {"from": gov})
+
+    yvweth_032.setPerformanceFee(0, {"from": gov})
+    yvweth_032.setManagementFee(0, {"from": gov})
+    yvweth_032.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
+    yvweth_032.setDepositLimit(0, {"from": gov})
+
     yield strategy
 
 
