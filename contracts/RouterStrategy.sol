@@ -45,6 +45,11 @@ contract RouterStrategy is BaseStrategy {
         _initializeThis(_yVault, _strategyName);
     }
 
+    modifier onlyManagement() {
+        require(msg.sender == governance() || msg.sender == vault.management());
+        _;
+    }
+
     function _initializeThis(address _yVault, string memory _strategyName)
         internal
     {
@@ -196,7 +201,7 @@ contract RouterStrategy is BaseStrategy {
         return _amtInWei;
     }
 
-    function setMaxLoss(uint256 _maxLoss) public onlyEmergencyAuthorized {
+    function setMaxLoss(uint256 _maxLoss) public onlyManagement {
         maxLoss = _maxLoss;
     }
 
