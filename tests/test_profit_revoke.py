@@ -35,4 +35,4 @@ def test_profit_revoke(yvweth_032, yvweth_042, strategy, gov, weth, weth_whale):
     assert total_gain > 0
     assert yvweth_032.strategies(strategy).dict()["totalLoss"] == 0
     assert strategy.balanceOfWant() == 0
-    assert strategy.valueOfInvestment() == 0
+    assert strategy.valueOfInvestment() < Wei("0.001 ether")  # there might be dust

@@ -10,12 +10,18 @@ def test_move_funds_to_042(yvweth_032, yvweth_042, strategy, gov, weth, weth_wha
         if ZERO_ADDRESS == strat_address:
             break
 
-        if strategy == strat_address or i == 1:
+        if strategy == strat_address:
             continue
 
         strat = Contract(strat_address)
+        if yvweth_032.strategies(strat).dict()["totalDebt"] == 0:
+            continue
+
         print(f"harvesting {strat.name()}")
-        strat.harvest({"from": gov})
+        tx = strat.harvest({"from": gov})
+        print(f"harvested {tx.events['Harvested']}")
+        # There is still a loss in one of the strats
+        # assert yvweth_032.strategies(strat).dict()['totalDebt'] == 0
 
     strategy.harvest({"from": gov})
     assert strategy.balanceOfWant() == 0
@@ -35,7 +41,8 @@ def test_move_funds_to_042(yvweth_032, yvweth_042, strategy, gov, weth, weth_wha
     assert yvweth_032.strategies(strategy).dict()["totalLoss"] == 0
 
     yvweth_032.revokeStrategy(strategy, {"from": gov})
-    strategy.harvest({"from": gov})
+    tx = strategy.harvest({"from": gov})
+    total_gain += tx.events["Harvested"]["profit"]
     chain.sleep(3600 * 8)
     chain.mine(1)
 

@@ -10,7 +10,7 @@ def test_profit_emergency(yvweth_032, yvweth_042, strategy, gov, weth, weth_whal
         if ZERO_ADDRESS == strat_address:
             break
 
-        if strategy == strat_address or i == 1:
+        if strategy == strat_address:
             continue
 
         strat = Contract(strat_address)
