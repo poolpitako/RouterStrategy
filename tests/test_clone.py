@@ -2,31 +2,9 @@ import pytest
 from brownie import chain, Wei, reverts, Contract, ZERO_ADDRESS
 
 
-def move_funds(
-    vault, dest_vault, strategy, gov, weth, weth_whale, original_strategy=None
-):
+def move_funds(vault, dest_vault, strategy, gov, weth, weth_whale):
     print(strategy.name())
-    # Move all funds to the new strat
-    for i in range(0, 20):
-        strat_address = vault.withdrawalQueue(i)
-        if ZERO_ADDRESS == strat_address:
-            break
 
-        if strategy == strat_address or (
-            original_strategy and original_strategy == strat_address
-        ):
-            continue
-
-        strat = Contract(strat_address)
-        if vault.strategies(strat).dict()["totalDebt"] == 0:
-            continue
-
-        print(f"harvesting {strat.name()}")
-        tx = strat.harvest({"from": gov})
-        print(f"harvested {tx.events['Harvested']}")
-
-    if original_strategy:
-        original_strategy.harvest({"from": gov})
     strategy.harvest({"from": gov})
     assert strategy.balanceOfWant() == 0
     assert strategy.valueOfInvestment() > 0
@@ -54,7 +32,6 @@ def move_funds(
     assert vault.strategies(strategy).dict()["totalDebt"] == 0
 
 
-#
 def test_original_strategy(
     origin_vault,
     destination_vault,
@@ -92,6 +69,8 @@ def test_cloned_strategy(
 
     origin_vault.updateStrategyDebtRatio(strategy, 0, {"from": gov})
 
+    # Return the funds to the vault
+    strategy.harvest({"from": gov})
     origin_vault.addStrategy(cloned_strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
 
     move_funds(
@@ -101,7 +80,6 @@ def test_cloned_strategy(
         gov,
         token,
         weth_whale,
-        original_strategy=strategy,
     )
 
 
