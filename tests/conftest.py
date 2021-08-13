@@ -1,9 +1,11 @@
 import pytest
 from brownie import config, Contract, ZERO_ADDRESS
 
+
 @pytest.fixture(scope="function", autouse=True)
 def isolate(fn_isolation):
     pass
+
 
 @pytest.fixture
 def gov(accounts):
@@ -49,6 +51,7 @@ def yvweth_032():
 def yvweth_042():
     yield Contract("0xa258C4606Ca8206D8aA700cE2143D7db854D168c")
 
+
 @pytest.fixture
 def origin_vault():
     # origin vault of the route
@@ -93,6 +96,7 @@ def weth_amout(user, weth):
     user.transfer(weth, weth_amout)
     yield weth_amout
 
+
 @pytest.fixture
 def vault(pm, gov, rewards, guardian, management, token):
     Vault = pm(config["dependencies"][0]).Vault
@@ -105,13 +109,7 @@ def vault(pm, gov, rewards, guardian, management, token):
 
 
 @pytest.fixture
-def strategy(
-    strategist,
-    keeper,
-    origin_vault,
-    destination_vault,
-    RouterStrategy,
-    gov):
+def strategy(strategist, keeper, origin_vault, destination_vault, RouterStrategy, gov):
     strategy = strategist.deploy(
         RouterStrategy, origin_vault, destination_vault, "Route yvWETH 042"
     )
@@ -128,14 +126,9 @@ def strategy(
 
     yield strategy
 
+
 @pytest.fixture
-def unique_strategy(
-    strategist,
-    keeper,
-    yvweth_032,
-    yvweth_042,
-    RouterStrategy,
-    gov):
+def unique_strategy(strategist, keeper, yvweth_032, yvweth_042, RouterStrategy, gov):
     strategy = strategist.deploy(
         RouterStrategy, yvweth_032, yvweth_042, "Route yvWETH 042"
     )
