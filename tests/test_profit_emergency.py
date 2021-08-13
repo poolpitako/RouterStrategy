@@ -2,9 +2,7 @@ import pytest
 from brownie import Contract, ZERO_ADDRESS, Wei, chain
 
 
-def test_profit_emergency(
-    yvweth_032, yvweth_042, unique_strategy, gov, weth, weth_whale
-):
+def test_profit_emergency(yvweth_032, yvweth_042, unique_strategy, gov, weth, weth_whale):
 
     strategy = unique_strategy
     # Move all funds to the new strat
