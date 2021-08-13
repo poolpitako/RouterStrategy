@@ -1,7 +1,10 @@
 import pytest
 from brownie import chain, Wei, reverts, Contract, ZERO_ADDRESS
 
-def move_funds(vault, dest_vault, strategy, gov, weth, weth_whale, original_strategy = None):
+
+def move_funds(
+    vault, dest_vault, strategy, gov, weth, weth_whale, original_strategy=None
+):
     print(strategy.name())
     # Move all funds to the new strat
     for i in range(0, 20):
@@ -9,7 +12,9 @@ def move_funds(vault, dest_vault, strategy, gov, weth, weth_whale, original_stra
         if ZERO_ADDRESS == strat_address:
             break
 
-        if strategy == strat_address or (original_strategy and original_strategy == strat_address):
+        if strategy == strat_address or (
+            original_strategy and original_strategy == strat_address
+        ):
             continue
 
         strat = Contract(strat_address)
@@ -20,7 +25,8 @@ def move_funds(vault, dest_vault, strategy, gov, weth, weth_whale, original_stra
         tx = strat.harvest({"from": gov})
         print(f"harvested {tx.events['Harvested']}")
 
-    if original_strategy: original_strategy.harvest({'from': gov})
+    if original_strategy:
+        original_strategy.harvest({"from": gov})
     strategy.harvest({"from": gov})
     assert strategy.balanceOfWant() == 0
     assert strategy.valueOfInvestment() > 0
@@ -58,9 +64,11 @@ def test_original_strategy(
     keeper,
     gov,
     token,
-    weth_whale):
+    weth_whale,
+):
 
     move_funds(origin_vault, destination_vault, strategy, gov, token, weth_whale)
+
 
 def test_cloned_strategy(
     origin_vault,
@@ -71,16 +79,12 @@ def test_cloned_strategy(
     keeper,
     gov,
     token,
-    weth_whale):
+    weth_whale,
+):
 
     clone_tx = strategy.cloneRouter(
-        origin_vault,
-        strategist,
-        rewards,
-        keeper,
-        destination_vault,
-        "ClonedStrategy")
-
+        origin_vault, strategist, rewards, keeper, destination_vault, "ClonedStrategy"
+    )
 
     cloned_strategy = Contract.from_abi(
         "Strategy", clone_tx.events["Cloned"]["clone"], strategy.abi
@@ -90,22 +94,24 @@ def test_cloned_strategy(
 
     origin_vault.addStrategy(cloned_strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
 
-    move_funds(origin_vault, destination_vault, cloned_strategy, gov,
-                token, weth_whale, original_strategy = strategy)
+    move_funds(
+        origin_vault,
+        destination_vault,
+        cloned_strategy,
+        gov,
+        token,
+        weth_whale,
+        original_strategy=strategy,
+    )
 
 
-
-
-def test_clone_of_clone(origin_vault, destination_vault, strategist, rewards, keeper, strategy):
+def test_clone_of_clone(
+    origin_vault, destination_vault, strategist, rewards, keeper, strategy
+):
 
     clone_tx = strategy.cloneRouter(
-        origin_vault,
-        strategist,
-        rewards,
-        keeper,
-        destination_vault,
-        "ClonedStrategy")
-
+        origin_vault, strategist, rewards, keeper, destination_vault, "ClonedStrategy"
+    )
 
     cloned_strategy = Contract.from_abi(
         "Strategy", clone_tx.events["Cloned"]["clone"], strategy.abi
