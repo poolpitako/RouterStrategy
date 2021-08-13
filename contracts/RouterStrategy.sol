@@ -46,11 +46,6 @@ contract RouterStrategy is BaseStrategy {
         _initializeThis(_yVault, _strategyName);
     }
 
-    modifier onlyManagement() {
-        require(msg.sender == governance() || msg.sender == vault.management());
-        _;
-    }
-
     event Cloned(address indexed clone);
 
     function cloneRouter(
@@ -242,7 +237,6 @@ contract RouterStrategy is BaseStrategy {
     {
         ret = new address[](1);
         ret[0] = address(yVault);
-        return ret;
     }
 
     function ethToWant(uint256 _amtInWei)
@@ -255,7 +249,7 @@ contract RouterStrategy is BaseStrategy {
         return _amtInWei;
     }
 
-    function setMaxLoss(uint256 _maxLoss) public onlyManagement {
+    function setMaxLoss(uint256 _maxLoss) public onlyVaultManagers {
         maxLoss = _maxLoss;
     }
 
