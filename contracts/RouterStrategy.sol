@@ -4,7 +4,12 @@ pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
 import {BaseStrategy} from "@yearnvaults/contracts/BaseStrategy.sol";
-import {SafeERC20, SafeMath, IERC20, Address} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {
+    SafeERC20,
+    SafeMath,
+    IERC20,
+    Address
+} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
 interface IVault is IERC20 {
@@ -199,10 +204,8 @@ contract RouterStrategy is BaseStrategy {
         }
 
         uint256 _balanceOfYShares = yVault.balanceOf(address(this));
-        uint256 sharesToWithdraw = Math.min(
-            _investmentTokenToYShares(_amount),
-            _balanceOfYShares
-        );
+        uint256 sharesToWithdraw =
+            Math.min(_investmentTokenToYShares(_amount), _balanceOfYShares);
 
         if (sharesToWithdraw == 0) {
             return;
