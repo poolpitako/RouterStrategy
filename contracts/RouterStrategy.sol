@@ -36,6 +36,7 @@ contract RouterStrategy is BaseStrategy {
     string internal strategyName;
     IVault public yVault;
     uint256 public maxLoss;
+    bool internal isOriginal = true;
 
     constructor(
         address _vault,
@@ -48,6 +49,62 @@ contract RouterStrategy is BaseStrategy {
     modifier onlyManagement() {
         require(msg.sender == governance() || msg.sender == vault.management());
         _;
+    }
+
+    event Cloned(address indexed clone);
+
+    function cloneRouter(
+        address _vault,
+        address _strategist,
+        address _rewards,
+        address _keeper,
+        address _yVault,
+        string memory _strategyName
+    ) external returns (address newStrategy) {
+        require(isOriginal);
+        // Copied from https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
+        bytes20 addressBytes = bytes20(address(this));
+        assembly {
+            // EIP-1167 bytecode
+            let clone_code := mload(0x40)
+            mstore(
+                clone_code,
+                0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000
+            )
+            mstore(add(clone_code, 0x14), addressBytes)
+            mstore(
+                add(clone_code, 0x28),
+                0x5af43d82803e903d91602b57fd5bf30000000000000000000000000000000000
+            )
+            newStrategy := create(0, clone_code, 0x37)
+        }
+
+        RouterStrategy(newStrategy).initialize(
+            _vault,
+            _strategist,
+            _rewards,
+            _keeper,
+            _yVault,
+            _strategyName
+        );
+
+        emit Cloned(newStrategy);
+    }
+
+    function initialize(
+        address _vault,
+        address _strategist,
+        address _rewards,
+        address _keeper,
+        address _yVault,
+        string memory _strategyName
+    ) public {
+        _initialize(_vault, _strategist, _rewards, _keeper);
+        require(address(yVault) == address(0));
+        _initializeThis(
+            _yVault,
+            _strategyName
+        );
     }
 
     function _initializeThis(address _yVault, string memory _strategyName)
