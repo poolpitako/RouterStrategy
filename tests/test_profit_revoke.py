@@ -2,8 +2,9 @@ import pytest
 from brownie import Contract, ZERO_ADDRESS, Wei, chain
 
 
-def test_profit_revoke(yvweth_032, yvweth_042, strategy, gov, weth, weth_whale):
+def test_profit_revoke(yvweth_032, yvweth_042, unique_strategy, gov, weth, weth_whale):
 
+    strategy = unique_strategy
     # Move all funds to the new strat
     for i in range(0, 20):
         strat_address = yvweth_032.withdrawalQueue(i)
