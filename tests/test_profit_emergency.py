@@ -7,19 +7,6 @@ def test_profit_emergency(
 ):
 
     strategy = unique_strategy
-    # Move all funds to the new strat
-    for i in range(0, 20):
-        strat_address = yvweth_032.withdrawalQueue(i)
-        if ZERO_ADDRESS == strat_address:
-            break
-
-        if strategy == strat_address:
-            continue
-
-        strat = Contract(strat_address)
-        print(f"harvesting {strat.name()}")
-        strat.harvest({"from": gov})
-
     strategy.harvest({"from": gov})
     assert strategy.balanceOfWant() == 0
     assert strategy.valueOfInvestment() > 0

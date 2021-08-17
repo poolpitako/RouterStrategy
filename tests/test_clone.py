@@ -106,3 +106,28 @@ def test_clone_of_clone(
             "New Strategy",
             {"from": strategist},
         )
+
+
+def test_double_initialize(
+    origin_vault, destination_vault, strategist, rewards, keeper, strategy
+):
+
+    clone_tx = strategy.cloneRouter(
+        origin_vault, strategist, rewards, keeper, destination_vault, "ClonedStrategy"
+    )
+
+    cloned_strategy = Contract.from_abi(
+        "Strategy", clone_tx.events["Cloned"]["clone"], strategy.abi
+    )
+
+    # should not be able to call initialize twice
+    with reverts("Strategy already initialized"):
+        cloned_strategy.initialize(
+            origin_vault,
+            strategist,
+            rewards,
+            keeper,
+            destination_vault,
+            "name",
+            {"from": strategist},
+        )
