@@ -7,6 +7,11 @@ def isolate(fn_isolation):
     pass
 
 
+@pytest.fixture(scope="function", autouse=True)
+def isolate(fn_isolation):
+    pass
+
+
 @pytest.fixture
 def gov(accounts):
     yield accounts.at("0xFEB4acf3df3cDEA7399794D0869ef76A6EfAff52", force=True)
@@ -65,6 +70,18 @@ def destination_vault():
 
 
 @pytest.fixture
+def origin_vault():
+    # origin vault of the route
+    yield Contract("0xa9fE4601811213c340e850ea305481afF02f5b28")
+
+
+@pytest.fixture
+def destination_vault():
+    # destination vault of the route
+    yield Contract("0xa258C4606Ca8206D8aA700cE2143D7db854D168c")
+
+
+@pytest.fixture
 def weth_whale(accounts):
     yield accounts.at("0xc1aae9d18bbe386b102435a8632c8063d31e747c", True)
 
@@ -98,6 +115,11 @@ def weth_amout(user, weth):
 
 
 @pytest.fixture
+def health_check():
+    yield Contract("0xddcea799ff1699e98edf118e0629a974df7df012")
+
+
+@pytest.fixture
 def vault(pm, gov, rewards, guardian, management, token):
     Vault = pm(config["dependencies"][0]).Vault
     vault = guardian.deploy(Vault)
@@ -109,7 +131,15 @@ def vault(pm, gov, rewards, guardian, management, token):
 
 
 @pytest.fixture
-def strategy(strategist, keeper, origin_vault, destination_vault, RouterStrategy, gov):
+def strategy(
+    strategist,
+    keeper,
+    origin_vault,
+    destination_vault,
+    RouterStrategy,
+    gov,
+    health_check,
+):
     strategy = strategist.deploy(
         RouterStrategy, origin_vault, destination_vault, "Route yvWETH 042"
     )
@@ -122,17 +152,21 @@ def strategy(strategist, keeper, origin_vault, destination_vault, RouterStrategy
 
         origin_vault.updateStrategyDebtRatio(strat_address, 0, {"from": gov})
 
+    strategy.setHealthCheck(health_check, {"from": origin_vault.governance()})
     origin_vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
 
     yield strategy
 
 
 @pytest.fixture
-def unique_strategy(strategist, keeper, yvweth_032, yvweth_042, RouterStrategy, gov):
+def unique_strategy(
+    strategist, keeper, yvweth_032, yvweth_042, RouterStrategy, gov, health_check
+):
     strategy = strategist.deploy(
         RouterStrategy, yvweth_032, yvweth_042, "Route yvWETH 042"
     )
     strategy.setKeeper(keeper)
+    strategy.setHealthCheck(health_check, {"from": yvweth_032.governance()})
 
     for i in range(0, 20):
         strat_address = yvweth_032.withdrawalQueue(i)

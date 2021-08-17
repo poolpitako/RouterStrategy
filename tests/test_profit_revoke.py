@@ -5,19 +5,6 @@ from brownie import Contract, ZERO_ADDRESS, Wei, chain
 def test_profit_revoke(yvweth_032, yvweth_042, unique_strategy, gov, weth, weth_whale):
 
     strategy = unique_strategy
-    # Move all funds to the new strat
-    for i in range(0, 20):
-        strat_address = yvweth_032.withdrawalQueue(i)
-        if ZERO_ADDRESS == strat_address:
-            break
-
-        if strategy == strat_address or i == 1:
-            continue
-
-        strat = Contract(strat_address)
-        print(f"harvesting {strat.name()}")
-        strat.harvest({"from": gov})
-
     strategy.harvest({"from": gov})
     assert strategy.balanceOfWant() == 0
     assert strategy.valueOfInvestment() > 0
