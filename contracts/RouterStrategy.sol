@@ -106,7 +106,7 @@ contract RouterStrategy is BaseStrategy {
         strategyName = _strategyName;
     }
 
-    function name() external view virtual override returns (string memory) {
+    function name() external view override returns (string memory) {
         return strategyName;
     }
 

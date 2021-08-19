@@ -44,7 +44,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
 
     event Cloned(address indexed clone);
 
-    function cloneRouter(
+    function cloneSynthetixRouter(
         address _vault,
         address _strategist,
         address _rewards,
@@ -97,16 +97,6 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         require(address(yVault) == address(0));
         _initializeSynthetix(_synth);
         _initializeThis(_yVault, _strategyName);
-    }
-
-    function name() external view override returns (string memory) {
-        return
-            string(
-                abi.encodePacked(
-                    "SynthetixRouterStratetgy",
-                    IERC20Extended(address(_synthCoin())).symbol()
-                )
-            );
     }
 
     function adjustPosition(uint256 _debtOutstanding) internal override {
