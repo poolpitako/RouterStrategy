@@ -2,6 +2,7 @@ import pytest
 from brownie import chain, Wei, reverts, Contract, ZERO_ADDRESS
 from eth_abi import encode_single
 
+
 def test_synth_strategy_susd_sbtc(
     susd_vault,
     sbtc_vault,

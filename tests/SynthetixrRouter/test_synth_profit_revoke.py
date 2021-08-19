@@ -1,14 +1,9 @@
 import pytest
 from brownie import chain, Wei, Contract
 
+
 def test_synth_profit_revoke(
-    susd_vault,
-    sbtc_vault,
-    synth_strategy,
-    gov,
-    sbtc,
-    wbtc,
-    wbtc_whale
+    susd_vault, sbtc_vault, synth_strategy, gov, sbtc, wbtc, wbtc_whale
 ):
 
     synth_strategy.harvest({"from": gov})
