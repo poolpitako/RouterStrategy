@@ -65,4 +65,7 @@ jobs:
         brownie test ./tests/test_move_funds_to_042.py -s
         brownie test ./tests/test_profit_emergency.py -s
         brownie test ./tests/test_profit_revoke.py -s
-        brownie test ./tests/test_clone.py -s
+        brownie test ./tests/SynthetixRouter/test_synth_clone.py -s
+        brownie test ./tests/SynthetixRouter/test_synth_profit_emergency.py -s
+        brownie test ./tests/SynthetixRouter/test_synth_profit_revoke.py -s
+        brownie test ./tests/SynthetixRouter/test_synth_router.py -s
