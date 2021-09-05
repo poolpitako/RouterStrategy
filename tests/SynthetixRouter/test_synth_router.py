@@ -194,7 +194,9 @@ def test_user_deposit_manual_conversion_and_withdraw(
     chain.sleep(360 + 1)
     chain.mine(1)
 
-    susd_vault.withdraw(susd_vault.balanceOf(susd_whale), susd_whale, 10_000, {"from": susd_whale})
+    susd_vault.withdraw(
+        susd_vault.balanceOf(susd_whale), susd_whale, 10_000, {"from": susd_whale}
+    )
 
     assert sbtc.balanceOf(synth_strategy) == 0
     assert susd_vault.balanceOf(susd_whale) == 0
