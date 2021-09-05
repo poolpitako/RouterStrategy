@@ -42,7 +42,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         _initializeSynthetix(_synth);
     }
 
-    event Cloned(address indexed clone);
+    event FullCloned(address indexed clone);
 
     function cloneSynthetixRouter(
         address _vault,
@@ -81,7 +81,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             _strategyName
         );
 
-        emit Cloned(newStrategy);
+        emit FullCloned(newStrategy);
     }
 
     function initialize(
@@ -93,10 +93,15 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         bytes32 _synth,
         string memory _strategyName
     ) public {
-        _initialize(_vault, _strategist, _rewards, _keeper);
-        require(address(yVault) == address(0));
+        super.initialize(
+            _vault,
+            _strategist,
+            _rewards,
+            _keeper,
+            _yVault,
+            _strategyName
+        );
         _initializeSynthetix(_synth);
-        _initializeThis(_yVault, _strategyName);
     }
 
     function adjustPosition(uint256 _debtOutstanding) internal override {
@@ -113,11 +118,8 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
         uint256 wantBal = balanceOfWant(); // want is always sUSD
-        if (wantBal < _amountNeeded) {
-            (_liquidatedAmount, _loss) = withdrawSomeWant(
-                _amountNeeded.sub(wantBal)
-            );
-        }
+
+        (_liquidatedAmount, _loss) = withdrawSomeWant(_amountNeeded, false);
 
         _liquidatedAmount = Math.min(
             _amountNeeded,
@@ -126,8 +128,9 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
     }
 
     function depositInVault() public onlyGovernance {
+        uint256 balanceOfSynth = _balanceOfSynth();
         if (
-            _balanceOfSynth() > DUST_THRESHOLD &&
+            balanceOfSynth > DUST_THRESHOLD &&
             _exchanger().maxSecsLeftInWaitingPeriod(
                 address(this),
                 synthCurrencyKey
@@ -137,7 +140,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             _checkAllowance(
                 address(yVault),
                 address(_synthCoin()),
-                _balanceOfSynth()
+                balanceOfSynth
             );
             yVault.deposit();
         }
@@ -145,45 +148,50 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
 
     function exchangeAllWant() internal returns (uint256 _exchangedAmount) {
         uint256 balanceBefore = _balanceOfSynth();
-        if (_balanceOfSUSD() > DUST_THRESHOLD) {
-            exchangeSUSDToSynth(_balanceOfSUSD());
+        uint256 balanceOfWant = _balanceOfSUSD();
+        if (balanceOfWant > DUST_THRESHOLD) {
+            exchangeSUSDToSynth(balanceOfWant);
         }
         _exchangedAmount = _balanceOfSynth().sub(balanceBefore);
     }
 
     function exchangeAllSynth() internal returns (uint256 _exchangedAmount) {
         uint256 balanceBefore = _balanceOfSUSD();
-        if (_balanceOfSynth() > DUST_THRESHOLD) {
-            exchangeSynthToSUSD(_balanceOfSynth());
+        uint256 balanceOfSynth = _balanceOfSynth();
+        if (balanceOfSynth > DUST_THRESHOLD) {
+            exchangeSynthToSUSD(balanceOfSynth);
         }
         _exchangedAmount = _balanceOfSUSD().sub(balanceBefore);
     }
 
     //safe to enter more than we have
-    function withdrawSomeWant(uint256 _amount)
+    function withdrawSomeWant(uint256 _amount, bool performExchanges)
         public
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
         uint256 sUSDBalanceBefore = balanceOfWant();
         uint256 synthBalanceBefore = _balanceOfSynth();
 
-        if (_amount < sUSDBalanceBefore) {
+        if (_amount <= sUSDBalanceBefore) {
             return (_amount, 0);
         }
 
-        uint256 _new_amount = _amount.sub(sUSDBalanceBefore);
+        if (performExchanges) {
+            uint256 _new_amount = _amount.sub(sUSDBalanceBefore);
 
-        uint256 _synth_amount = _synthFromSUSD(_new_amount);
-        if (_synth_amount <= synthBalanceBefore) {
-            exchangeSynthToSUSD(_synth_amount);
-            return (_amount, 0);
-        }
+            uint256 _synth_amount = _synthFromSUSD(_new_amount);
+            if (_synth_amount <= synthBalanceBefore) {
+                exchangeSynthToSUSD(_synth_amount);
+                return (_amount, 0);
+            }
 
-        uint256 _remaining_amount = _synth_amount.sub(synthBalanceBefore);
+            uint256 _remaining_amount = _synth_amount.sub(synthBalanceBefore);
 
-        _withdrawFromYVault(_remaining_amount);
-        if (_balanceOfSynth() > DUST_THRESHOLD) {
-            exchangeSynthToSUSD(_balanceOfSynth());
+            _withdrawFromYVault(_remaining_amount);
+            uint256 newBalanceOfSynth = _balanceOfSynth();
+            if (newBalanceOfSynth > DUST_THRESHOLD) {
+                exchangeSynthToSUSD(newBalanceOfSynth);
+            }
         }
 
         uint256 totalAssets = balanceOfWant();
@@ -215,7 +223,10 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             super.liquidateAllPositions();
         }
         exchangeAllSynth();
-        (_liquidatedAmount, _loss) = withdrawSomeWant(estimatedTotalAssets());
+        (_liquidatedAmount, _loss) = withdrawSomeWant(
+            estimatedTotalAssets(),
+            true
+        );
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
@@ -254,48 +265,16 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             uint256 _debtPayment
         )
     {
-        _debtPayment = _debtOutstanding;
-
         uint256 debt = vault.strategies(address(this)).totalDebt;
-        uint256 currentValue = estimatedTotalAssets();
         uint256 wantBalance = balanceOfWant();
 
-        // we check against estimatedTotalAssets
-        if (debt < currentValue) {
-            //profit
-            _profit = currentValue.sub(debt);
-            // NOTE: the strategy will only be able to serve profit payment up to buffer amount
-            // we limit profit and try to delay its reporting until there is enough unlocked want to repay it to the vault
-            _profit = Math.min(wantBalance, _profit);
+        if (debt >= wantBalance) {
+            _debtPayment = Math.min(_debtOutstanding, wantBalance);
+            _loss = debt.sub(wantBalance);
         } else {
-            _loss = debt.sub(currentValue);
-        }
-
-        uint256 toFree = _debtPayment.add(_profit);
-        // if the strategy needs to exchange synth into sUSD, the waiting period will kick in and the vault.report will revert !!!
-        // this only works if the strategy has been previously unwinded using manual function
-        // otherwise, max amount "toFree" is wantBalance
-        if (toFree > wantBalance) {
-            toFree = toFree.sub(wantBalance);
-
-            (, uint256 withdrawalLoss) = withdrawSomeWant(toFree);
-
-            //when we withdraw we can lose money in the withdrawal
-            if (withdrawalLoss < _profit) {
-                _profit = _profit.sub(withdrawalLoss);
-            } else {
-                _loss = _loss.add(withdrawalLoss.sub(_profit));
-                _profit = 0;
-            }
-
-            wantBalance = balanceOfWant();
-
-            if (wantBalance < _profit) {
-                _profit = wantBalance;
-                _debtPayment = 0;
-            } else if (wantBalance < _debtPayment.add(_profit)) {
-                _debtPayment = wantBalance.sub(_profit);
-            }
+            uint256 potentialProfit = wantBalance.sub(debt);
+            _debtPayment = Math.min(_debtOutstanding, potentialProfit);
+            _profit = potentialProfit.sub(_debtPayment);
         }
     }
 }

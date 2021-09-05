@@ -112,7 +112,7 @@ def test_synth_cloned_strategy(
     )
 
     cloned_strategy = Contract.from_abi(
-        "Strategy", clone_tx.events["Cloned"]["clone"], synth_strategy.abi
+        "Strategy", clone_tx.events["FullCloned"]["clone"], synth_strategy.abi
     )
 
     susd_vault.updateStrategyDebtRatio(synth_strategy, 0, {"from": gov})
@@ -164,7 +164,7 @@ def test_clone_of_clone(
     )
 
     cloned_strategy = Contract.from_abi(
-        "Strategy", clone_tx.events["Cloned"]["clone"], synth_strategy.abi
+        "Strategy", clone_tx.events["FullCloned"]["clone"], synth_strategy.abi
     )
 
     # should not clone a clone

@@ -3,6 +3,11 @@ from brownie import config, Contract, ZERO_ADDRESS
 from eth_abi import encode_single
 
 
+@pytest.fixture(scope="function", autouse=True)
+def isolate(fn_isolation):
+    pass
+
+
 @pytest.fixture
 def susd_vault():
     yield Contract("0xa5cA62D95D24A4a350983D5B8ac4EB8638887396")

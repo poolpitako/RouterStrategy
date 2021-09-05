@@ -88,3 +88,113 @@ def test_synth_strategy_susd_sbtc(
     assert susd_vault.strategies(synth_strategy).dict()["totalGain"] == total_gain
     assert susd_vault.strategies(synth_strategy).dict()["totalLoss"] == total_loss
     assert susd_vault.strategies(synth_strategy).dict()["totalDebt"] == 0
+
+
+def test_user_deposit_and_reverts_withdraws(
+    susd_vault,
+    sbtc_vault,
+    synth_strategy,
+    strategist,
+    rewards,
+    keeper,
+    gov,
+    susd,
+    sbtc,
+    wbtc,
+    susd_whale,
+    wbtc_whale,
+):
+    susd.approve(susd_vault, 2 ** 256 - 1, {"from": susd_whale})
+
+    previousBalance = susd_vault.balanceOf(susd_whale)
+
+    susd_vault.deposit({"from": susd_whale})
+
+    assert susd_vault.balanceOf(susd_whale) > previousBalance
+
+    chain.sleep(360 + 1)
+    chain.mine(1)
+
+    assert sbtc.balanceOf(synth_strategy) == 0
+
+    synth_strategy.harvest({"from": gov})
+
+    assert sbtc.balanceOf(synth_strategy) > 0
+
+    chain.sleep(360 + 1)
+    chain.mine(1)
+    with reverts():
+        susd_vault.withdraw({"from": susd_whale})
+
+
+def test_user_deposit_manual_conversion_and_withdraw(
+    susd_vault,
+    sbtc_vault,
+    synth_strategy,
+    strategist,
+    rewards,
+    keeper,
+    gov,
+    susd,
+    sbtc,
+    wbtc,
+    susd_whale,
+    wbtc_whale,
+):
+    susd.approve(susd_vault, 2 ** 256 - 1, {"from": susd_whale})
+
+    previousBalance = susd_vault.balanceOf(susd_whale)
+
+    prevValue = susd_vault.totalAssets()
+
+    susd_vault.deposit({"from": susd_whale})
+
+    assert susd_vault.totalAssets() > prevValue
+
+    assert susd_vault.balanceOf(susd_whale) > previousBalance
+    assert sbtc.balanceOf(synth_strategy) == 0
+
+    # first time only exchanges susd to sbtc
+    tx = synth_strategy.harvest({"from": gov})
+
+    assert synth_strategy.valueOfInvestment() == 0
+    assert synth_strategy.balanceOfWant() == 0
+    assert sbtc.balanceOf(synth_strategy) > 0
+
+    chain.sleep(360 + 1)
+    chain.mine(1)
+
+    synth_strategy.depositInVault({"from": gov})
+
+    assert synth_strategy.valueOfInvestment() > 0
+    assert synth_strategy.balanceOfWant() == 0
+    assert sbtc.balanceOf(synth_strategy) == 0
+
+    chain.sleep(360 + 1)
+    chain.mine(1)
+
+    # second time should be all loss because investment is locked in yvault and in synth
+    total_debt = susd_vault.strategies(synth_strategy).dict()["totalDebt"]
+    tx = synth_strategy.harvest({"from": gov})
+
+    assert synth_strategy.balanceOfWant() == 0
+    assert synth_strategy.valueOfInvestment() > 0
+
+    loss = tx.events["Harvested"]["loss"]
+
+    assert total_debt == loss
+
+    synth_strategy.manualRemoveFullLiquidity({"from": gov})
+
+    assert sbtc.balanceOf(synth_strategy) == 0
+    assert synth_strategy.balanceOfWant() > 0
+    assert synth_strategy.valueOfInvestment() == 0
+
+    # wait 6 min to withdraw
+    chain.sleep(360 + 1)
+    chain.mine(1)
+
+    susd_vault.withdraw(susd_vault.balanceOf(susd_whale), susd_whale, 10_000, {"from": susd_whale})
+
+    assert sbtc.balanceOf(synth_strategy) == 0
+    assert susd_vault.balanceOf(susd_whale) == 0
