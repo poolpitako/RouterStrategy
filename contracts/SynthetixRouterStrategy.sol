@@ -127,7 +127,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         );
     }
 
-    function depositInVault() public onlyGovernance {
+    function depositInVault() public onlyVaultManagers {
         uint256 balanceOfSynth = _balanceOfSynth();
         if (
             balanceOfSynth > DUST_THRESHOLD &&
@@ -166,7 +166,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
 
     //safe to enter more than we have
     function withdrawSomeWant(uint256 _amount, bool performExchanges)
-        public
+        private
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
         uint256 sUSDBalanceBefore = balanceOfWant();
@@ -222,7 +222,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         if (yVault.balanceOf(address(this)) > 0) {
             super.liquidateAllPositions();
         }
-        exchangeAllSynth();
+        // It will withdraw all the assets from the yvault and the exchange them to want
         (_liquidatedAmount, _loss) = withdrawSomeWant(
             estimatedTotalAssets(),
             true

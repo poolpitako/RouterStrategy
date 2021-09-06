@@ -34,6 +34,7 @@ contract Synthetix {
 
     function _initializeSynthetix(bytes32 _synth) internal {
         // sETH / sBTC / sEUR / sLINK
+        require(contractSynth == 0, "Synth already assigned.");
         contractSynth = _synth;
         synthCurrencyKey = ISynth(
             IReadProxy(address(resolver().getAddress(_synth))).target()

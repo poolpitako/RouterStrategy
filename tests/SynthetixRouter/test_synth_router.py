@@ -2,6 +2,7 @@ import pytest
 from brownie import chain, Wei, reverts, Contract, ZERO_ADDRESS
 from eth_abi import encode_single
 
+DUST_THRESHOLD = 10_000
 
 def test_synth_strategy_susd_sbtc(
     susd_vault,
@@ -73,7 +74,7 @@ def test_synth_strategy_susd_sbtc(
     synth_strategy.manualRemoveFullLiquidity({"from": gov})
 
     assert synth_strategy.balanceOfWant() > 0
-    assert sbtc.balanceOf(synth_strategy) == 0
+    assert sbtc.balanceOf(synth_strategy) < DUST_THRESHOLD
     assert sbtc_vault.balanceOf(synth_strategy) == 0
 
     chain.sleep(360 + 1)
@@ -168,7 +169,7 @@ def test_user_deposit_manual_conversion_and_withdraw(
 
     assert synth_strategy.valueOfInvestment() > 0
     assert synth_strategy.balanceOfWant() == 0
-    assert sbtc.balanceOf(synth_strategy) == 0
+    assert sbtc.balanceOf(synth_strategy) < DUST_THRESHOLD
 
     chain.sleep(360 + 1)
     chain.mine(1)
@@ -186,7 +187,7 @@ def test_user_deposit_manual_conversion_and_withdraw(
 
     synth_strategy.manualRemoveFullLiquidity({"from": gov})
 
-    assert sbtc.balanceOf(synth_strategy) == 0
+    assert sbtc.balanceOf(synth_strategy) < DUST_THRESHOLD
     assert synth_strategy.balanceOfWant() > 0
     assert synth_strategy.valueOfInvestment() == 0
 
@@ -198,5 +199,5 @@ def test_user_deposit_manual_conversion_and_withdraw(
         susd_vault.balanceOf(susd_whale), susd_whale, 10_000, {"from": susd_whale}
     )
 
-    assert sbtc.balanceOf(synth_strategy) == 0
+    assert sbtc.balanceOf(synth_strategy) < DUST_THRESHOLD
     assert susd_vault.balanceOf(susd_whale) == 0
