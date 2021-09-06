@@ -4,6 +4,7 @@ from eth_abi import encode_single
 
 DUST_THRESHOLD = 10_000
 
+
 def test_synth_strategy_susd_sbtc(
     susd_vault,
     sbtc_vault,
