@@ -70,7 +70,7 @@ def susd_whale(accounts):
 
 @pytest.fixture
 def sbtc_whale(accounts):
-    yield accounts.at("0xbf2f5b49571c9ff8610fad2d99a8b1c1829acff9", force=True)
+    yield accounts.at("0xBA12222222228d8Ba445958a75a0704d566BF2C8", force=True)
 
 
 @pytest.fixture
