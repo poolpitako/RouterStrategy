@@ -2,6 +2,8 @@ import pytest
 from brownie import chain, Wei, reverts, Contract
 from eth_abi import encode_single
 
+DUST_THRESHOLD = 10_000
+
 
 def route_susd_sbtc(
     synth_strategy,
@@ -29,7 +31,8 @@ def route_susd_sbtc(
     synth_strategy.harvest({"from": gov})
 
     assert synth_strategy.valueOfInvestment() == prev_value
-    assert synth_strategy.balanceOfWant() == 0
+    assert synth_strategy.estimatedTotalAssets() > 0
+    assert synth_strategy.balanceOfWant() > 0
     assert sbtc.balanceOf(synth_strategy) > 0
     assert sbtc_vault.totalAssets() == prev_value_dest_vault
 
@@ -39,7 +42,7 @@ def route_susd_sbtc(
     synth_strategy.depositInVault({"from": gov})
 
     assert synth_strategy.valueOfInvestment() > prev_value
-    assert synth_strategy.balanceOfWant() == 0
+    assert synth_strategy.balanceOfWant() > 0
     assert sbtc.balanceOf(synth_strategy) == 0
     assert sbtc_vault.totalAssets() > prev_value_dest_vault
     assert sbtc_vault.balanceOf(synth_strategy) > 0
@@ -69,7 +72,7 @@ def route_susd_sbtc(
     synth_strategy.manualRemoveFullLiquidity({"from": gov})
 
     assert synth_strategy.balanceOfWant() > 0
-    assert sbtc.balanceOf(synth_strategy) == 0
+    assert sbtc.balanceOf(synth_strategy) < DUST_THRESHOLD
     assert sbtc_vault.balanceOf(synth_strategy) == 0
 
     chain.sleep(360 + 1)

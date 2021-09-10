@@ -12,7 +12,7 @@ def test_synth_profit_revoke(
     chain.mine(1)
 
     synth_strategy.depositInVault({"from": gov})
-    assert synth_strategy.balanceOfWant() == 0
+    assert synth_strategy.balanceOfWant() > 0
     assert synth_strategy.valueOfInvestment() > 0
 
     # Send profit to SBTC Vault
@@ -26,7 +26,7 @@ def test_synth_profit_revoke(
     assert synth_strategy.valueOfInvestment() > prev_value
 
     susd_vault.revokeStrategy(synth_strategy, {"from": gov})
-
+    synth_strategy.updateSUSDBuffer(10_000, {"from": gov})
     synth_strategy.manualRemoveFullLiquidity({"from": gov})
 
     chain.sleep(360 + 1)

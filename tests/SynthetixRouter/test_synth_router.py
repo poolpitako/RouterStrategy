@@ -35,7 +35,8 @@ def test_synth_strategy_susd_sbtc(
     synth_strategy.harvest({"from": gov})
 
     assert synth_strategy.valueOfInvestment() == prev_value
-    assert synth_strategy.balanceOfWant() == 0
+    assert synth_strategy.estimatedTotalAssets() > 0
+    assert synth_strategy.balanceOfWant() > 0
     assert sbtc.balanceOf(synth_strategy) > 0
     assert sbtc_vault.totalAssets() == prev_value_dest_vault
 
@@ -45,7 +46,8 @@ def test_synth_strategy_susd_sbtc(
     synth_strategy.depositInVault({"from": gov})
 
     assert synth_strategy.valueOfInvestment() > prev_value
-    assert synth_strategy.balanceOfWant() == 0
+    assert synth_strategy.estimatedTotalAssets() > 0
+    assert synth_strategy.balanceOfWant() > 0
     assert sbtc.balanceOf(synth_strategy) == 0
     assert sbtc_vault.totalAssets() > prev_value_dest_vault
     assert sbtc_vault.balanceOf(synth_strategy) > 0
@@ -160,7 +162,7 @@ def test_user_deposit_manual_conversion_and_withdraw(
     tx = synth_strategy.harvest({"from": gov})
 
     assert synth_strategy.valueOfInvestment() == 0
-    assert synth_strategy.balanceOfWant() == 0
+    assert synth_strategy.balanceOfWant() > 0
     assert sbtc.balanceOf(synth_strategy) > 0
 
     chain.sleep(360 + 1)
@@ -169,7 +171,7 @@ def test_user_deposit_manual_conversion_and_withdraw(
     synth_strategy.depositInVault({"from": gov})
 
     assert synth_strategy.valueOfInvestment() > 0
-    assert synth_strategy.balanceOfWant() == 0
+    assert synth_strategy.balanceOfWant() > 0
     assert sbtc.balanceOf(synth_strategy) < DUST_THRESHOLD
 
     chain.sleep(360 + 1)
@@ -179,12 +181,16 @@ def test_user_deposit_manual_conversion_and_withdraw(
     total_debt = susd_vault.strategies(synth_strategy).dict()["totalDebt"]
     tx = synth_strategy.harvest({"from": gov})
 
-    assert synth_strategy.balanceOfWant() == 0
+    assert synth_strategy.balanceOfWant() > 0
     assert synth_strategy.valueOfInvestment() > 0
 
     loss = tx.events["Harvested"]["loss"]
 
-    assert total_debt == loss
+    assert loss > 0
+
+    # wait 6 min to withdraw
+    chain.sleep(360 + 1)
+    chain.mine(1)
 
     synth_strategy.manualRemoveFullLiquidity({"from": gov})
 

@@ -12,7 +12,7 @@ def test_synth_profit_emergency(
     chain.mine(1)
 
     synth_strategy.depositInVault({"from": gov})
-    assert synth_strategy.balanceOfWant() == 0
+    assert synth_strategy.balanceOfWant() > 0
     assert synth_strategy.valueOfInvestment() > 0
 
     # Send profit to SBTC Vault
@@ -25,6 +25,7 @@ def test_synth_profit_emergency(
     sbtc.transfer(sbtc_vault, sbtc.balanceOf(wbtc_whale), {"from": wbtc_whale})
     assert synth_strategy.valueOfInvestment() > prev_value
 
+    synth_strategy.updateSUSDBuffer(10_000, {"from": gov})
     synth_strategy.setEmergencyExit({"from": gov})
     synth_strategy.manualRemoveFullLiquidity({"from": gov})
 
