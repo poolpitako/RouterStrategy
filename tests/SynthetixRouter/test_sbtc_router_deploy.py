@@ -26,10 +26,20 @@ def test_sbtc_router_deploy(SynthetixRouterStrategy, strategist, sbtc, sbtc_whal
     susd_router.harvest({"from": gov})
     hedging_vault.addStrategy(strategy, 2_000, 0, 2 ** 256 - 1, 0, {"from": gov})
 
-    strategy.harvest({"from": gov})
+    tx = strategy.harvest({"from": gov})
+    print(f"First harvest {tx.events['Harvested']}")
+    assert tx.events['Harvested']['loss'] == 0
 
-    assert strategy.balanceOfWant() == 0
+    # There needs to be a buffer
+    assert strategy.balanceOfWant() > 0
+
+    # Even though we can't move the funds, sbtc should be already in the strategy
     assert sbtc.balanceOf(strategy) > 0
+
+    # Buffer should be 1% of debt aprox
+    total_debt = hedging_vault.strategies(strategy).dict()['totalDebt']/1e18
+    assert total_debt * 0.009 < strategy.balanceOfWant()/1e18
+    assert total_debt * 0.02 > strategy.balanceOfWant()/1e18
 
     # deposit sbtc into new strategy
     chain.sleep(3600 * 11)
@@ -40,14 +50,24 @@ def test_sbtc_router_deploy(SynthetixRouterStrategy, strategist, sbtc, sbtc_whal
     assert strategy.balanceOfWant() == 0
     assert sbtc.balanceOf(strategy) == 0
 
-
     sbtc.transfer(sbtc_vault, int(sbtc_vault.totalAssets()*.05), {"from": sbtc_whale})
-    strategy.manualRemoveFullLiquidity({"from": gov})
+    capital_to_withdraw =  strategy.estimatedTotalAssets() - hedging_vault.strategies(strategy).dict()['totalDebt']
+
+    # Should this touch the buffer or not?
+    strategy.manualRemoveLiquidity(capital_to_withdraw, {"from": gov})
+
+    # Check that we withdrew enough sUSD
+    assert abs(strategy.balanceOfWant() - capital_to_withdraw) < Wei("1 ether")
+    assert sbtc.balanceOf(strategy) == 0
+
     chain.sleep(360 + 1)
     chain.mine(1)
-    strategy.harvest({"from": gov})
+    tx = strategy.harvest({"from": gov})
+    print(f"Second harvest {tx.events['Harvested']}")
 
+    assert tx.events['Harvested']['loss'] == 0
     assert hedging_vault.strategies(strategy).dict()["totalLoss"] == 0
+    assert False
 
     hedging_vault.revokeStrategy(strategy, {"from": gov})
     chain.sleep(360 + 1)
@@ -61,6 +81,9 @@ def test_sbtc_router_deploy(SynthetixRouterStrategy, strategist, sbtc, sbtc_whal
     chain.sleep(360 + 1)
     chain.mine(1)
     tx = strategy.harvest({"from": gov})
+    print(f"Third harvest {tx.events['Harvested']}")
+    assert tx.events['Harvested']['loss'] == 0
+
     chain.sleep(360 + 1)
     chain.mine(1)
 
