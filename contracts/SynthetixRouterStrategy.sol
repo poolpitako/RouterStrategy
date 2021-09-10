@@ -159,7 +159,11 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
     {
         uint256 wantBal = balanceOfWant(); // want is always sUSD
 
-        (_liquidatedAmount, _loss) = withdrawSomeWant(_amountNeeded, false);
+        if (wantBal < _amountNeeded) {
+            (_liquidatedAmount, _loss) = withdrawSomeWant(
+                _amountNeeded.sub(wantBal)
+            );
+        }
 
         _liquidatedAmount = Math.min(
             _amountNeeded,
@@ -197,17 +201,10 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         private
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
-        uint256 sUSDBalanceBefore = balanceOfWant();
-        uint256 synthBalanceBefore = _balanceOfSynth();
-        //totalDebt.mul(susdBuffer).div(DENOMINATOR)
-
-        // If there is enough in the buffer, return that
-        if (_amount <= sUSDBalanceBefore) {
-            return (_amount, 0);
-        }
-
         if (performExchanges) {
             // we exchange synths to susd
+            uint256 synthBalanceBefore = _balanceOfSynth();
+            uint256 sUSDBalanceBefore = balanceOfWant();
             uint256 _new_amount = _amount.sub(sUSDBalanceBefore);
 
             uint256 _synth_amount = _synthFromSUSD(_new_amount);
@@ -247,7 +244,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
 
     function manualRemoveFullLiquidity()
         external
-        onlyGovernance
+        onlyVaultManagers
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
         // It will remove max amount of assets and trade synth for sUSD
@@ -264,7 +261,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
 
     function manualRemoveLiquidity(uint256 _liquidityToRemove)
         external
-        onlyGovernance
+        onlyVaultManagers
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
         _liquidityToRemove = Math.min(
@@ -311,16 +308,14 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             uint256 _debtPayment
         )
     {
-        uint256 debt = vault.strategies(address(this)).totalDebt;
-        uint256 wantBalance = balanceOfWant();
+        uint256 totalDebt = vault.strategies(address(this)).totalDebt;
+        uint256 totalAssetsAfterProfit = estimatedTotalAssets();
 
-        if (debt >= wantBalance) {
-            _debtPayment = Math.min(_debtOutstanding, wantBalance);
-            _loss = debt.sub(wantBalance);
+        if (totalDebt < totalAssetsAfterProfit) {
+            //profit
+            _profit = totalAssetsAfterProfit.sub(totalDebt);
         } else {
-            uint256 potentialProfit = wantBalance.sub(debt);
-            _debtPayment = Math.min(_debtOutstanding, potentialProfit);
-            _profit = potentialProfit.sub(_debtPayment);
+            _loss = totalDebt.sub(totalAssetsAfterProfit);
         }
     }
 }
