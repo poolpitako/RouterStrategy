@@ -161,7 +161,8 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
 
         if (wantBal < _amountNeeded) {
             (_liquidatedAmount, _loss) = withdrawSomeWant(
-                _amountNeeded.sub(wantBal)
+                _amountNeeded.sub(wantBal),
+                false
             );
         }
 
@@ -310,12 +311,18 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
     {
         uint256 totalDebt = vault.strategies(address(this)).totalDebt;
         uint256 totalAssetsAfterProfit = estimatedTotalAssets();
+        uint256 _balanceOfWant = balanceOfWant();
+        uint256 buffer = totalDebt.mul(susdBuffer).div(DENOMINATOR);
+
+        _debtPayment = _debtOutstanding;
 
         if (totalDebt < totalAssetsAfterProfit) {
-            //profit
-            _profit = totalAssetsAfterProfit.sub(totalDebt);
+            _profit = _balanceOfWant.sub(buffer);
+            _debtPayment = Math.min(_debtOutstanding, _profit);
+            _profit = _profit.sub(_debtPayment);
         } else {
             _loss = totalDebt.sub(totalAssetsAfterProfit);
+            _debtPayment = 0;
         }
     }
 }

@@ -1,5 +1,5 @@
 import pytest
-from brownie import chain, Contract, accounts, ZERO_ADDRESS
+from brownie import chain, Contract, accounts, ZERO_ADDRESS, Wei
 from eth_abi import encode_single
 
 DUST_THRESHOLD = 10_000
@@ -28,7 +28,7 @@ def test_sbtc_router_deploy(SynthetixRouterStrategy, strategist, sbtc, sbtc_whal
 
     tx = strategy.harvest({"from": gov})
     print(f"First harvest {tx.events['Harvested']}")
-    assert tx.events['Harvested']['loss'] == 0
+    assert tx.events["Harvested"]["loss"] == 0
 
     # There needs to be a buffer
     assert strategy.balanceOfWant() > 0
@@ -37,21 +37,26 @@ def test_sbtc_router_deploy(SynthetixRouterStrategy, strategist, sbtc, sbtc_whal
     assert sbtc.balanceOf(strategy) > 0
 
     # Buffer should be 1% of debt aprox
-    total_debt = hedging_vault.strategies(strategy).dict()['totalDebt']/1e18
-    assert total_debt * 0.009 < strategy.balanceOfWant()/1e18
-    assert total_debt * 0.02 > strategy.balanceOfWant()/1e18
-
+    total_debt = hedging_vault.strategies(strategy).dict()["totalDebt"] / 1e18
+    assert total_debt * 0.009 < strategy.balanceOfWant() / 1e18
+    assert total_debt * 0.02 > strategy.balanceOfWant() / 1e18
+    balance_of_want_before = strategy.balanceOfWant()
     # deposit sbtc into new strategy
     chain.sleep(3600 * 11)
     chain.mine(1)
     strategy.depositInVault({"from": gov})
 
     assert strategy.valueOfInvestment() > 0
-    assert strategy.balanceOfWant() == 0
+    assert strategy.balanceOfWant() == balance_of_want_before
     assert sbtc.balanceOf(strategy) == 0
 
-    sbtc.transfer(sbtc_vault, int(sbtc_vault.totalAssets()*.05), {"from": sbtc_whale})
-    capital_to_withdraw =  strategy.estimatedTotalAssets() - hedging_vault.strategies(strategy).dict()['totalDebt']
+    sbtc.transfer(
+        sbtc_vault, int(sbtc_vault.totalAssets() * 0.05), {"from": sbtc_whale}
+    )
+    capital_to_withdraw = (
+        strategy.estimatedTotalAssets()
+        - hedging_vault.strategies(strategy).dict()["totalDebt"]
+    )
 
     # Should this touch the buffer or not?
     strategy.manualRemoveLiquidity(capital_to_withdraw, {"from": gov})
@@ -65,9 +70,8 @@ def test_sbtc_router_deploy(SynthetixRouterStrategy, strategist, sbtc, sbtc_whal
     tx = strategy.harvest({"from": gov})
     print(f"Second harvest {tx.events['Harvested']}")
 
-    assert tx.events['Harvested']['loss'] == 0
+    assert tx.events["Harvested"]["loss"] == 0
     assert hedging_vault.strategies(strategy).dict()["totalLoss"] == 0
-    assert False
 
     hedging_vault.revokeStrategy(strategy, {"from": gov})
     chain.sleep(360 + 1)
@@ -82,7 +86,7 @@ def test_sbtc_router_deploy(SynthetixRouterStrategy, strategist, sbtc, sbtc_whal
     chain.mine(1)
     tx = strategy.harvest({"from": gov})
     print(f"Third harvest {tx.events['Harvested']}")
-    assert tx.events['Harvested']['loss'] == 0
+    assert tx.events["Harvested"]["loss"] == 0
 
     chain.sleep(360 + 1)
     chain.mine(1)
