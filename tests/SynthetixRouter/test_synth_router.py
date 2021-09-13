@@ -32,7 +32,10 @@ def test_synth_strategy_susd_sbtc(
     prev_value_dest_vault = sbtc_vault.totalAssets()
 
     # exchange susd to sbtc
-    synth_strategy.harvest({"from": gov})
+    tx = synth_strategy.harvest({"from": gov})
+
+    total_gain = susd_vault.strategies(synth_strategy).dict()["totalGain"]
+    total_loss = susd_vault.strategies(synth_strategy).dict()["totalLoss"]
 
     assert synth_strategy.valueOfInvestment() == prev_value
     assert synth_strategy.estimatedTotalAssets() > 0
@@ -56,18 +59,6 @@ def test_synth_strategy_susd_sbtc(
 
     # produce gains
     sbtc.transfer(sbtc_vault, sbtc.balanceOf(wbtc_whale), {"from": wbtc_whale})
-
-    synth_strategy.manualRemoveFullLiquidity({"from": gov})
-
-    chain.sleep(360 + 1)
-    chain.mine(1)
-
-    synth_strategy.harvest({"from": gov})
-
-    total_gain = susd_vault.strategies(synth_strategy).dict()["totalGain"]
-    total_loss = susd_vault.strategies(synth_strategy).dict()["totalLoss"]
-    assert total_gain > 0
-    assert total_loss == 0
 
     susd_vault.revokeStrategy(synth_strategy, {"from": gov})
 

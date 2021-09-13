@@ -119,6 +119,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         // this will tell us how much we need to keep in the buffer
         uint256 totalDebt = vault.strategies(address(this)).totalDebt; // in sUSD (want)
         uint256 buffer = totalDebt.mul(susdBuffer).div(DENOMINATOR);
+        uint256 debtRatio = vault.strategies(address(this)).debtRatio;
 
         uint256 _sUSDToInvest =
             _sUSDBalance > buffer ? _sUSDBalance.sub(buffer) : 0;
@@ -128,7 +129,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         uint256 _synthToInvest =
             looseSynth > _synthToSell ? looseSynth.sub(_synthToSell) : 0;
 
-        if (_synthToSell == 0) {
+        if (_synthToSell == 0 && debtRatio > 0) {
             // This will invest all available sUSD (exchanging to Synth first)
             // Exchange amount of sUSD to Synth
             if (_sUSDToInvest == 0) {
@@ -317,12 +318,12 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         _debtPayment = _debtOutstanding;
 
         if (totalDebt < totalAssetsAfterProfit) {
-            _profit = _balanceOfWant.sub(buffer);
+            _profit = _balanceOfWant;
             _debtPayment = Math.min(_debtOutstanding, _profit);
             _profit = _profit.sub(_debtPayment);
         } else {
             _loss = totalDebt.sub(totalAssetsAfterProfit);
-            _debtPayment = 0;
+            _debtPayment = Math.min(_debtOutstanding, _balanceOfWant);
         }
     }
 }
