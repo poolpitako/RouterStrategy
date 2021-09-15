@@ -28,22 +28,24 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
     using Address for address;
     using SafeMath for uint256;
 
+    uint256 internal constant DENOMINATOR = 10_000;
     uint256 internal constant DUST_THRESHOLD = 10_000;
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant uniswapRouter =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
-    uint256 public susdBuffer; // 10% amount of sUSD that should not be exchanged for synth
-    uint256 public constant DENOMINATOR = 10_000;
+    // This is the amount of sUSD that should not be exchanged for synth
+    // Usually 100 for 1%.
+    uint256 public susdBuffer;
 
     constructor(
         address _vault,
         address _yVault,
+        string memory _strategyName,
         bytes32 _synth,
-        string memory _strategyName
+        uint256 _susdBuffer
     ) public RouterStrategy(_vault, _yVault, _strategyName) {
-        _initializeSynthetix(_synth);
-        susdBuffer = 100; // initial one is 1%
+        _initializeSynthetixRouter(_synth, _susdBuffer);
     }
 
     event FullCloned(address indexed clone);
@@ -54,8 +56,9 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         address _rewards,
         address _keeper,
         address _yVault,
+        string memory _strategyName,
         bytes32 _synth,
-        string memory _strategyName
+        uint256 _susdBuffer
     ) external returns (address newStrategy) {
         require(isOriginal);
         // Copied from https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
@@ -81,8 +84,9 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             _rewards,
             _keeper,
             _yVault,
+            _strategyName,
             _synth,
-            _strategyName
+            _susdBuffer
         );
 
         emit FullCloned(newStrategy);
@@ -94,8 +98,9 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         address _rewards,
         address _keeper,
         address _yVault,
+        string memory _strategyName,
         bytes32 _synth,
-        string memory _strategyName
+        uint256 _susdBuffer
     ) public {
         super.initialize(
             _vault,
@@ -105,8 +110,14 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             _yVault,
             _strategyName
         );
+        _initializeSynthetixRouter(_synth, _susdBuffer);
+    }
+
+    function _initializeSynthetixRouter(bytes32 _synth, uint256 _susdBuffer)
+        internal
+    {
         _initializeSynthetix(_synth);
-        susdBuffer = 1_000; // 10% over 10_000
+        susdBuffer = _susdBuffer;
     }
 
     function adjustPosition(uint256 _debtOutstanding) internal override {
