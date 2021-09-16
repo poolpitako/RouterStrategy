@@ -5,7 +5,7 @@ from eth_abi import encode_single
 DUST_THRESHOLD = 10_000
 
 
-def test_sbtc_router_deploy(SynthetixRouterStrategy, strategist, sbtc, sbtc_whale):
+def test_sbtc_router_deploy_with_profit(SynthetixRouterStrategy, strategist, sbtc, sbtc_whale):
 
     hedging_vault = Contract("0xcE0F1Ef5aAAB82547acc699d3Ab93c069bb6e547")
     sbtc_vault = Contract("0x8472E9914C0813C4b465927f82E213EA34839173")
@@ -15,8 +15,9 @@ def test_sbtc_router_deploy(SynthetixRouterStrategy, strategist, sbtc, sbtc_whal
         SynthetixRouterStrategy,
         hedging_vault,
         sbtc_vault,
-        encode_single("bytes32", b"ProxysBTC"),
         "RoutersUSDtosBTC",
+        encode_single("bytes32", b"ProxysBTC"),
+        100
     )
 
     susd_router = Contract(hedging_vault.withdrawalQueue(0))
@@ -94,7 +95,7 @@ def test_sbtc_router_deploy(SynthetixRouterStrategy, strategist, sbtc, sbtc_whal
     assert hedging_vault.strategies(strategy).dict()["totalDebt"] == 0
 
 
-def test_sbtc_router_deploy_w_loss(
+def test_sbtc_router_deploy_with_loss(
     SynthetixRouterStrategy, strategist, sbtc, sbtc_whale, susd, susd_whale
 ):
 
@@ -106,9 +107,11 @@ def test_sbtc_router_deploy_w_loss(
         SynthetixRouterStrategy,
         hedging_vault,
         sbtc_vault,
-        encode_single("bytes32", b"ProxysBTC"),
         "RoutersUSDtosBTC",
+        encode_single("bytes32", b"ProxysBTC"),
+        100
     )
+
     susd.approve(hedging_vault, 2 ** 256 - 1, {"from": susd_whale})
     susd_router = Contract(hedging_vault.withdrawalQueue(0))
     hedging_vault.updateStrategyDebtRatio(susd_router, 8_000, {"from": gov})
@@ -190,4 +193,4 @@ def test_sbtc_router_deploy_w_loss(
     chain.sleep(360 + 1)
     chain.mine(1)
 
-    assert hedging_vault.strategies(strategy).dict()["totalDebt"] == 0
+    assert hedging_vault.strategies(strategy).dict()["totalDebt"] < Wei("1 ether")
