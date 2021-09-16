@@ -5,7 +5,9 @@ from eth_abi import encode_single
 DUST_THRESHOLD = 10_000
 
 
-def test_sbtc_router_deploy_with_profit(SynthetixRouterStrategy, strategist, sbtc, sbtc_whale):
+def test_sbtc_router_deploy_with_profit(
+    SynthetixRouterStrategy, strategist, sbtc, sbtc_whale
+):
 
     hedging_vault = Contract("0xcE0F1Ef5aAAB82547acc699d3Ab93c069bb6e547")
     sbtc_vault = Contract("0x8472E9914C0813C4b465927f82E213EA34839173")
@@ -17,7 +19,7 @@ def test_sbtc_router_deploy_with_profit(SynthetixRouterStrategy, strategist, sbt
         sbtc_vault,
         "RoutersUSDtosBTC",
         encode_single("bytes32", b"ProxysBTC"),
-        100
+        100,
     )
 
     susd_router = Contract(hedging_vault.withdrawalQueue(0))
@@ -109,7 +111,7 @@ def test_sbtc_router_deploy_with_loss(
         sbtc_vault,
         "RoutersUSDtosBTC",
         encode_single("bytes32", b"ProxysBTC"),
-        100
+        100,
     )
 
     susd.approve(hedging_vault, 2 ** 256 - 1, {"from": susd_whale})

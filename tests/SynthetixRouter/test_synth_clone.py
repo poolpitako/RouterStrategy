@@ -61,7 +61,7 @@ def route_susd_sbtc(
     synth_strategy.manualRemoveFullLiquidity({"from": gov})
 
     assert synth_strategy.balanceOfWant() > 0
-    assert sbtc.balanceOf(synth_strategy) < 10_000 # 10k is DUST_THRESHOLD
+    assert sbtc.balanceOf(synth_strategy) < 10_000  # 10k is DUST_THRESHOLD
     assert sbtc_vault.balanceOf(synth_strategy) == 0
 
     chain.sleep(360 + 1)
@@ -101,7 +101,7 @@ def test_synth_cloned_strategy(
         sbtc_vault,
         "ClonedSynthStrategy",
         encode_single("bytes32", b"ProxysBTC"),
-        100
+        100,
     )
 
     cloned_strategy = Contract.from_abi(

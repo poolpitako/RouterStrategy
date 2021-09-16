@@ -28,7 +28,7 @@ def synth_strategy(
         sbtc_vault,
         "RoutersUSDtosBTC",
         encode_single("bytes32", b"ProxysBTC"),
-        100
+        100,
     )
     strategy.setKeeper(keeper)
 

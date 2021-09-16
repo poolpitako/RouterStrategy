@@ -235,7 +235,7 @@ contract RouterStrategy is BaseStrategy {
             );
     }
 
-    function prepareMigration(address _newStrategy) internal override {
+    function prepareMigration(address _newStrategy) internal virtual override {
         IERC20(yVault).safeTransfer(
             _newStrategy,
             IERC20(yVault).balanceOf(address(this))

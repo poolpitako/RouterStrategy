@@ -252,6 +252,12 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         returns (uint256 _amountFreed)
     {
         // In order to work, manualRemoveFullLiquidity needs to be call 6 min in advance
+        require(checkWaitingPeriod(), "Wait for settlement period");
+        require(
+            valueOfInvestment() == 0,
+            "Need to remove liquidity from vault first"
+        );
+        require(_balanceOfSynth() == 0, "Need to exchange synth to want first");
         _amountFreed = balanceOfWant();
     }
 
@@ -310,6 +316,11 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
                     10**yVault.decimals()
                 )
             );
+    }
+
+    function prepareMigration(address _newStrategy) internal override {
+        super.prepareMigration(_newStrategy);
+        _synthCoin().transferAndSettle(_newStrategy, _balanceOfSynth());
     }
 
     function prepareReturn(uint256 _debtOutstanding)
