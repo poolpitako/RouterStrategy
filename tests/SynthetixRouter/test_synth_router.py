@@ -69,7 +69,7 @@ def test_synth_strategy_susd_sbtc(
 
     assert synth_strategy.balanceOfWant() > 0
     assert sbtc.balanceOf(synth_strategy) < DUST_THRESHOLD
-    assert sbtc_vault.balanceOf(synth_strategy) == 0
+    assert sbtc_vault.balanceOf(synth_strategy) < DUST_THRESHOLD
 
     chain.sleep(360 + 1)
     chain.mine(1)

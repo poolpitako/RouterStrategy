@@ -9,9 +9,6 @@ import {
     IERC20,
     Address
 } from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/Math.sol";
-
-import "./Interfaces/erc20/IERC20Extended.sol";
 
 import "./RouterStrategy.sol";
 import "./Synthetix.sol";
@@ -125,12 +122,11 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             return;
         }
         uint256 looseSynth = _balanceOfSynth();
-        uint256 _sUSDBalance = _balanceOfSUSD();
+        uint256 _sUSDBalance = balanceOfWant();
 
         // this will tell us how much we need to keep in the buffer
         uint256 totalDebt = vault.strategies(address(this)).totalDebt; // in sUSD (want)
         uint256 buffer = totalDebt.mul(susdBuffer).div(DENOMINATOR);
-        uint256 debtRatio = vault.strategies(address(this)).debtRatio;
 
         uint256 _sUSDToInvest =
             _sUSDBalance > buffer ? _sUSDBalance.sub(buffer) : 0;
@@ -140,13 +136,14 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         uint256 _synthToInvest =
             looseSynth > _synthToSell ? looseSynth.sub(_synthToSell) : 0;
 
-        if (_synthToSell == 0 && debtRatio > 0) {
-            // This will invest all available sUSD (exchanging to Synth first)
-            // Exchange amount of sUSD to Synth
+        if (_synthToSell == 0) {
+            // This will first deposit any loose synth in the vault if it not locked
+            // Then will invest all available sUSD (exchanging to Synth)
+            // After this, user has to manually call depositInVault to deposit synth after settlement period
             if (_sUSDToInvest == 0) {
                 return;
             }
-            if (looseSynth > DUST_THRESHOLD) {
+            if (checkWaitingPeriod() && looseSynth > DUST_THRESHOLD) {
                 depositInVault();
             }
             exchangeSUSDToSynth(_sUSDToInvest);
@@ -172,15 +169,12 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         uint256 wantBal = balanceOfWant(); // want is always sUSD
 
         if (wantBal < _amountNeeded) {
-            (_liquidatedAmount, _loss) = withdrawSomeWant(
-                _amountNeeded.sub(wantBal),
-                false
-            );
+            (_liquidatedAmount, _loss) = withdrawSomeWant(_amountNeeded, false);
         }
 
         _liquidatedAmount = Math.min(
             _amountNeeded,
-            _liquidatedAmount.add(wantBal)
+            _liquidatedAmount == 0 ? wantBal : _liquidatedAmount
         );
     }
 
@@ -218,19 +212,18 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             // we exchange synths to susd
             uint256 synthBalanceBefore = _balanceOfSynth();
             uint256 sUSDBalanceBefore = balanceOfWant();
-            uint256 _new_amount = _amount.sub(sUSDBalanceBefore);
+            uint256 _newAmount = _amount.sub(sUSDBalanceBefore);
 
-            uint256 _synth_amount = _synthFromSUSD(_new_amount);
-            uint256 _remaining_amount = _synth_amount;
+            uint256 _synthAmount = _synthFromSUSD(_newAmount);
             if (checkWaitingPeriod()) {
-                if (_synth_amount <= synthBalanceBefore) {
-                    exchangeSynthToSUSD(_synth_amount);
+                if (_synthAmount <= synthBalanceBefore) {
+                    exchangeSynthToSUSD(_synthAmount);
                     return (_amount, 0);
                 }
 
-                _remaining_amount = _synth_amount.sub(synthBalanceBefore);
+                _synthAmount = _synthAmount.sub(synthBalanceBefore);
             }
-            _withdrawFromYVault(_remaining_amount);
+            _withdrawFromYVault(_synthAmount);
             uint256 newBalanceOfSynth = _balanceOfSynth();
             if (newBalanceOfSynth > DUST_THRESHOLD) {
                 exchangeSynthToSUSD(newBalanceOfSynth);
@@ -254,10 +247,13 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         // In order to work, manualRemoveFullLiquidity needs to be call 6 min in advance
         require(checkWaitingPeriod(), "Wait for settlement period");
         require(
-            valueOfInvestment() == 0,
+            valueOfInvestment() < DUST_THRESHOLD,
             "Need to remove liquidity from vault first"
         );
-        require(_balanceOfSynth() == 0, "Need to exchange synth to want first");
+        require(
+            _balanceOfSynth() < DUST_THRESHOLD,
+            "Need to exchange synth to want first"
+        );
         _amountFreed = balanceOfWant();
     }
 
@@ -266,11 +262,6 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         onlyVaultManagers
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
-        // It will remove max amount of assets and trade synth for sUSD
-        // the Synthetix waiting period will start (and harvest can be called 6 mins later)
-        if (yVault.balanceOf(address(this)) > 0) {
-            super.liquidateAllPositions();
-        }
         // It will withdraw all the assets from the yvault and the exchange them to want
         (_liquidatedAmount, _loss) = withdrawSomeWant(
             estimatedTotalAssets(),
@@ -287,13 +278,13 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             _liquidityToRemove,
             estimatedTotalAssets()
         );
-        // It will withdraw all the assets from the yvault and the exchange them to want
+        // It will withdraw _liquidityToRemove assets from the yvault and the exchange them to want
         (_liquidatedAmount, _loss) = withdrawSomeWant(_liquidityToRemove, true);
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
         return
-            _balanceOfSUSD().add(_synthToSUSD(_balanceOfSynth())).add(
+            balanceOfWant().add(_sUSDFromSynth(_balanceOfSynth())).add(
                 valueOfInvestment()
             );
     }
@@ -311,7 +302,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
 
     function valueOfInvestment() public view override returns (uint256) {
         return
-            _synthToSUSD(
+            _sUSDFromSynth(
                 yVault.balanceOf(address(this)).mul(yVault.pricePerShare()).div(
                     10**yVault.decimals()
                 )
@@ -335,14 +326,12 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         uint256 totalDebt = vault.strategies(address(this)).totalDebt;
         uint256 totalAssetsAfterProfit = estimatedTotalAssets();
         uint256 _balanceOfWant = balanceOfWant();
-        uint256 buffer = totalDebt.mul(susdBuffer).div(DENOMINATOR);
 
         _debtPayment = _debtOutstanding;
 
         if (totalDebt < totalAssetsAfterProfit) {
-            _profit = _balanceOfWant;
-            _debtPayment = Math.min(_debtOutstanding, _profit);
-            _profit = _profit.sub(_debtPayment);
+            _debtPayment = Math.min(_debtOutstanding, _balanceOfWant);
+            _profit = _balanceOfWant.sub(_debtPayment);
         } else {
             _loss = totalDebt.sub(totalAssetsAfterProfit);
             _debtPayment = Math.min(_debtOutstanding, _balanceOfWant);

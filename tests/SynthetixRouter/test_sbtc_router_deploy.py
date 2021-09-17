@@ -89,7 +89,8 @@ def test_sbtc_router_deploy_with_profit(
     chain.mine(1)
     tx = strategy.harvest({"from": gov})
     print(f"Third harvest {tx.events['Harvested']}")
-    assert tx.events["Harvested"]["loss"] == 0
+    assert tx.events["Harvested"]["profit"] == 0
+    assert tx.events["Harvested"]["loss"] > 0  # due to fees
 
     chain.sleep(360 + 1)
     chain.mine(1)
