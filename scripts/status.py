@@ -44,6 +44,11 @@ def info():
     print(f"    Current c-ratio: {((1/strategy.getCurrentRatio())*1e20):2f} %")
     print(f"    Issuance c-ratio: {((1/strategy.getIssuanceRatio())*1e20):2f} %")
 
+    print(f"- Result: ")
+    print(
+        f"    Invested sUSD-Borrowed sUSD: $ {(strategy.balanceOfSusdInVault()-strategy.balanceOfDebt())*susdPrice/1e18:_}"
+    )
+
     print(f"- Actions:")
     if strategy.getCurrentRatio() > strategy.getIssuanceRatio():
         print(f"    We will need to burn: {-mintable/1e18:_} sUSD")
