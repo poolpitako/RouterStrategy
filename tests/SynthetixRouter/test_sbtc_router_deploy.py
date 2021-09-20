@@ -120,7 +120,8 @@ def test_sbtc_router_deploy_with_loss(
     hedging_vault.updateStrategyDebtRatio(susd_router, 8_000, {"from": gov})
 
     susd_router.setMaxLoss(10_000, {"from": gov})
-    susd_router.harvest({"from": gov})
+    tx = susd_router.harvest({"from": gov})
+    print(f"sUSDRouter harvest {tx.events['Harvested']}")
     hedging_vault.addStrategy(strategy, 2_000, 0, 2 ** 256 - 1, 0, {"from": gov})
 
     susd.transfer(hedging_vault, susd.balanceOf(susd_whale), {"from": susd_whale})
