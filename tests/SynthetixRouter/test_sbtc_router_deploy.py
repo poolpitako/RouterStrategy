@@ -29,6 +29,9 @@ def test_sbtc_router_deploy_with_profit(
     susd_router.harvest({"from": gov})
     hedging_vault.addStrategy(strategy, 2_000, 0, 2 ** 256 - 1, 0, {"from": gov})
 
+    chain.sleep(360 + 1)
+    chain.mine(1)
+
     tx = strategy.harvest({"from": gov})
     print(f"First harvest {tx.events['Harvested']}")
     assert tx.events["Harvested"]["loss"] == 0
@@ -45,8 +48,9 @@ def test_sbtc_router_deploy_with_profit(
     assert total_debt * 0.02 > strategy.balanceOfWant() / 1e18
     balance_of_want_before = strategy.balanceOfWant()
     # deposit sbtc into new strategy
-    chain.sleep(3600 * 11)
+    chain.sleep(360 + 1)
     chain.mine(1)
+
     strategy.depositInVault({"from": gov})
 
     assert strategy.valueOfInvestment() > 0
@@ -123,9 +127,8 @@ def test_sbtc_router_deploy_with_loss(
     tx = susd_router.harvest({"from": gov})
     print(f"sUSDRouter harvest {tx.events['Harvested']}")
     hedging_vault.addStrategy(strategy, 2_000, 0, 2 ** 256 - 1, 0, {"from": gov})
-
-    susd.transfer(hedging_vault, susd.balanceOf(susd_whale), {"from": susd_whale})
-
+    chain.sleep(360 + 1)
+    chain.mine(1)
     tx = strategy.harvest({"from": gov})
     print(f"First harvest {tx.events['Harvested']}")
     assert tx.events["Harvested"]["loss"] == 0
@@ -142,7 +145,7 @@ def test_sbtc_router_deploy_with_loss(
     assert total_debt * 0.02 > strategy.balanceOfWant() / 1e18
     balance_of_want_before = strategy.balanceOfWant()
     # deposit sbtc into new strategy
-    chain.sleep(3600 * 11)
+    chain.sleep(360 + 1)
     chain.mine(1)
     strategy.depositInVault({"from": gov})
 
