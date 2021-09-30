@@ -1,6 +1,7 @@
 import pytest
 from brownie import chain, Wei, Contract, ZERO_ADDRESS
 
+
 def remove_old_strats(vault):
     for i in range(0, 20):
         strat_address = vault.withdrawalQueue(i)
@@ -8,6 +9,7 @@ def remove_old_strats(vault):
             break
 
         vault.updateStrategyDebtRatio(strat_address, 0, {"from": vault.governance()})
+
 
 def harvest_strats(vault):
     for i in range(0, 20):
@@ -48,13 +50,13 @@ def do_happy_case(old_vault, strategy, whale):
     token.transfer(new_vault, Wei("10 ether"), {"from": whale})
     assert strategy.valueOfInvestment() > prev_value
 
-    #harvest all strats in new vault
+    # harvest all strats in new vault
     # harvest_strats(new_vault)
 
     chain.sleep(3600 * 11)
     chain.mine(1)
 
-    #harvest router to get profits
+    # harvest router to get profits
     strategy.harvest({"from": gov})
 
     total_gain = old_vault.strategies(strategy).dict()["totalGain"]
@@ -71,8 +73,9 @@ def do_happy_case(old_vault, strategy, whale):
     assert old_vault.strategies(strategy).dict()["totalLoss"] == 0
     assert old_vault.strategies(strategy).dict()["totalDebt"] == 0
 
+
 def test_yfi_router_043():
-    old_vault = Contract('0xE14d13d8B3b85aF791b2AADD661cDBd5E6097Db1')
-    strategy = Contract('0x0A5157244e4F82F100A461CA65C7b05C8dACf835')
-    whale = Contract('0x3ff33d9162ad47660083d7dc4bc02fb231c81677')
+    old_vault = Contract("0xE14d13d8B3b85aF791b2AADD661cDBd5E6097Db1")
+    strategy = Contract("0x0A5157244e4F82F100A461CA65C7b05C8dACf835")
+    whale = Contract("0x3ff33d9162ad47660083d7dc4bc02fb231c81677")
     do_happy_case(old_vault, strategy, whale)
