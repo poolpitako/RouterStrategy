@@ -1,10 +1,6 @@
 import pytest
 from brownie import config, Contract, ZERO_ADDRESS
-
-
-@pytest.fixture(scope="function", autouse=True)
-def isolate(fn_isolation):
-    pass
+from eth_abi import encode_single
 
 
 @pytest.fixture(scope="function", autouse=True)

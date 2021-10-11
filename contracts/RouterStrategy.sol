@@ -110,7 +110,13 @@ contract RouterStrategy is BaseStrategy {
         return strategyName;
     }
 
-    function estimatedTotalAssets() public view override returns (uint256) {
+    function estimatedTotalAssets()
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         return balanceOfWant().add(valueOfInvestment());
     }
 
@@ -120,6 +126,7 @@ contract RouterStrategy is BaseStrategy {
 
     function prepareReturn(uint256 _debtOutstanding)
         internal
+        virtual
         override
         returns (
             uint256 _profit,
@@ -159,7 +166,11 @@ contract RouterStrategy is BaseStrategy {
         }
     }
 
-    function adjustPosition(uint256 _debtOutstanding) internal override {
+    function adjustPosition(uint256 _debtOutstanding)
+        internal
+        virtual
+        override
+    {
         if (emergencyExit) {
             return;
         }
@@ -173,6 +184,7 @@ contract RouterStrategy is BaseStrategy {
 
     function liquidatePosition(uint256 _amountNeeded)
         internal
+        virtual
         override
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
@@ -211,6 +223,7 @@ contract RouterStrategy is BaseStrategy {
 
     function liquidateAllPositions()
         internal
+        virtual
         override
         returns (uint256 _amountFreed)
     {
@@ -222,7 +235,7 @@ contract RouterStrategy is BaseStrategy {
             );
     }
 
-    function prepareMigration(address _newStrategy) internal override {
+    function prepareMigration(address _newStrategy) internal virtual override {
         IERC20(yVault).safeTransfer(
             _newStrategy,
             IERC20(yVault).balanceOf(address(this))
@@ -276,7 +289,7 @@ contract RouterStrategy is BaseStrategy {
         return amount.mul(10**yVault.decimals()).div(yVault.pricePerShare());
     }
 
-    function valueOfInvestment() public view returns (uint256) {
+    function valueOfInvestment() public view virtual returns (uint256) {
         return
             yVault.balanceOf(address(this)).mul(yVault.pricePerShare()).div(
                 10**yVault.decimals()
