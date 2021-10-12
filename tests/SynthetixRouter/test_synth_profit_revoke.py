@@ -3,8 +3,22 @@ from brownie import chain, Wei, Contract
 
 
 def test_synth_profit_revoke(
-    susd_vault, sbtc_vault, synth_strategy, gov, sbtc, wbtc, wbtc_whale
+    susd_vault,
+    sbtc_vault,
+    synth_strategy,
+    gov,
+    sbtc,
+    wbtc,
+    wbtc_whale,
+    susd_whale,
+    susd,
 ):
+
+    susd.approve(susd_vault, 2 ** 256 - 1, {"from": susd_whale})
+    susd_vault.deposit({"from": susd_whale})
+
+    chain.sleep(360 + 1)
+    chain.mine(1)
 
     synth_strategy.harvest({"from": gov})
 
