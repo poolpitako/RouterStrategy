@@ -21,6 +21,10 @@ def test_synth_strategy_susd_sbtc(
 ):
 
     susd.approve(susd_vault, 2 ** 256 - 1, {"from": susd_whale})
+    susd_vault.deposit({"from": susd_whale})
+
+    chain.sleep(360 + 1)
+    chain.mine(1)
 
     crvWTBC_SBTC = Contract("0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")
     wbtc.approve(crvWTBC_SBTC, 2 ** 256 - 1, {"from": wbtc_whale})
@@ -143,6 +147,9 @@ def test_user_deposit_manual_conversion_and_withdraw(
     prevValue = susd_vault.totalAssets()
 
     susd_vault.deposit({"from": susd_whale})
+
+    chain.sleep(360 + 1)
+    chain.mine(1)
 
     assert susd_vault.totalAssets() > prevValue
 

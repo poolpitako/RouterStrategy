@@ -133,8 +133,6 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         uint256 _sUSDNeeded = _sUSDToInvest == 0 ? buffer.sub(_sUSDBalance) : 0;
         uint256 _synthToSell =
             _sUSDNeeded > 0 ? _synthFromSUSD(_sUSDNeeded) : 0; // amount of Synth that we need to sell to refill buffer
-        uint256 _synthToInvest =
-            looseSynth > _synthToSell ? looseSynth.sub(_synthToSell) : 0;
 
         if (_synthToSell == 0) {
             // This will first deposit any loose synth in the vault if it not locked

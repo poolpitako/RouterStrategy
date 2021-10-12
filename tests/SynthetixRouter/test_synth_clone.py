@@ -15,10 +15,14 @@ def route_susd_sbtc(
     gov,
 ):
     susd.approve(susd_vault, 2 ** 256 - 1, {"from": susd_whale})
+    susd_vault.deposit({"from": susd_whale})
 
     crvWTBC_SBTC = Contract("0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")
     wbtc.approve(crvWTBC_SBTC, 2 ** 256 - 1, {"from": wbtc_whale})
     crvWTBC_SBTC.exchange(1, 2, 1 * 10 ** 11, 0, {"from": wbtc_whale})
+
+    chain.sleep(360 + 1)
+    chain.mine(1)
 
     assert sbtc.balanceOf(wbtc_whale) > 0
 

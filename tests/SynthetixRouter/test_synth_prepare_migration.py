@@ -32,6 +32,11 @@ def test_synth_prepare_migration(
     cloned_strategy = Contract.from_abi(
         "Strategy", clone_tx.events["FullCloned"]["clone"], synth_strategy.abi
     )
+    susd.approve(susd_vault, 2 ** 256 - 1, {"from": susd_whale})
+    susd_vault.deposit({"from": susd_whale})
+
+    chain.sleep(360 + 1)
+    chain.mine(1)
 
     synth_strategy.harvest({"from": gov})
 

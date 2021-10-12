@@ -9,8 +9,14 @@ def isolate(fn_isolation):
 
 
 @pytest.fixture
-def susd_vault():
-    yield Contract("0xa5cA62D95D24A4a350983D5B8ac4EB8638887396")
+def susd_vault(pm, gov, rewards, guardian, management, susd):
+    Vault = pm(config["dependencies"][0]).Vault
+    vault = guardian.deploy(Vault)
+    vault.initialize(susd, gov, rewards, "", "", guardian, management)
+    vault.setDepositLimit(2 ** 256 - 1, {"from": gov})
+    vault.setManagement(management, {"from": gov})
+    yield vault
+    # yield Contract("0xa5cA62D95D24A4a350983D5B8ac4EB8638887396")
 
 
 @pytest.fixture
