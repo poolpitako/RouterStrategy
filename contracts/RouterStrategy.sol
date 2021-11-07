@@ -55,7 +55,7 @@ contract RouterStrategy is BaseStrategy {
         address _keeper,
         address _yVault,
         string memory _strategyName
-    ) external returns (address newStrategy) {
+    ) external virtual returns (address newStrategy) {
         require(isOriginal);
         // Copied from https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
         bytes20 addressBytes = bytes20(address(this));
@@ -151,8 +151,8 @@ contract RouterStrategy is BaseStrategy {
 
         if (_loss > _profit) {
             // Example:
-            // debtOutstanding 100, profit 50, _amountFreed 100, _loss 50
-            // loss should be 0, (50-50)
+            // debtOutstanding 100, profit 40, _amountFreed 100, _loss 50
+            // loss should be 10, (50-40)
             // profit should endup in 0
             _loss = _loss.sub(_profit);
             _profit = 0;

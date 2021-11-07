@@ -2,14 +2,6 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
-import {BaseStrategy} from "@yearnvaults/contracts/BaseStrategy.sol";
-import {
-    SafeERC20,
-    SafeMath,
-    IERC20,
-    Address
-} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-
 import "./RouterStrategy.sol";
 import "./Synthetix.sol";
 
@@ -21,10 +13,6 @@ interface IUni {
 }
 
 contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
-    using SafeERC20 for IERC20;
-    using Address for address;
-    using SafeMath for uint256;
-
     uint256 internal constant DENOMINATOR = 10_000;
     uint256 internal constant DUST_THRESHOLD = 10_000;
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -45,7 +33,16 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         _initializeSynthetixRouter(_synth, _susdBuffer);
     }
 
-    event FullCloned(address indexed clone);
+    function cloneRouter(
+        address _vault,
+        address _strategist,
+        address _rewards,
+        address _keeper,
+        address _yVault,
+        string memory _strategyName
+    ) external override returns (address newStrategy) {
+        revert();
+    }
 
     function cloneSynthetixRouter(
         address _vault,
@@ -86,7 +83,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             _susdBuffer
         );
 
-        emit FullCloned(newStrategy);
+        emit Cloned(newStrategy);
     }
 
     function initialize(
@@ -141,7 +138,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             if (_sUSDToInvest == 0) {
                 return;
             }
-            if (checkWaitingPeriod() && looseSynth > DUST_THRESHOLD) {
+            if (isWaitingPeriodFinished() && looseSynth > DUST_THRESHOLD) {
                 depositInVault();
             }
             exchangeSUSDToSynth(_sUSDToInvest);
@@ -181,7 +178,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         susdBuffer = _susdBuffer;
     }
 
-    function checkWaitingPeriod() private returns (bool freeToMove) {
+    function isWaitingPeriodFinished() private returns (bool freeToMove) {
         return
             _exchanger().maxSecsLeftInWaitingPeriod(
                 address(this),
@@ -191,7 +188,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
 
     function depositInVault() public onlyVaultManagers {
         uint256 balanceOfSynth = _balanceOfSynth();
-        if (balanceOfSynth > DUST_THRESHOLD && checkWaitingPeriod()) {
+        if (balanceOfSynth > DUST_THRESHOLD && isWaitingPeriodFinished()) {
             _checkAllowance(
                 address(yVault),
                 address(_synthCoin()),
@@ -210,21 +207,27 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             // we exchange synths to susd
             uint256 synthBalanceBefore = _balanceOfSynth();
             uint256 sUSDBalanceBefore = balanceOfWant();
-            uint256 _newAmount = _amount.sub(sUSDBalanceBefore);
 
-            uint256 _synthAmount = _synthFromSUSD(_newAmount);
-            if (checkWaitingPeriod()) {
-                if (_synthAmount <= synthBalanceBefore) {
-                    exchangeSynthToSUSD(_synthAmount);
-                    return (_amount, 0);
+            if (sUSDBalanceBefore < _amount) {
+                uint256 _newAmount = _amount.sub(sUSDBalanceBefore);
+
+                uint256 _synthAmount = _synthFromSUSD(_newAmount);
+                if (isWaitingPeriodFinished()) {
+                    if (_synthAmount <= synthBalanceBefore) {
+                        exchangeSynthToSUSD(_synthAmount);
+                        return (_amount, 0);
+                    }
+
+                    _synthAmount = _synthAmount.sub(synthBalanceBefore);
                 }
-
-                _synthAmount = _synthAmount.sub(synthBalanceBefore);
-            }
-            _withdrawFromYVault(_synthAmount);
-            uint256 newBalanceOfSynth = _balanceOfSynth();
-            if (newBalanceOfSynth > DUST_THRESHOLD) {
-                exchangeSynthToSUSD(newBalanceOfSynth);
+                _withdrawFromYVault(_synthAmount);
+                uint256 newBalanceOfSynth = _balanceOfSynth();
+                if (
+                    newBalanceOfSynth > DUST_THRESHOLD &&
+                    isWaitingPeriodFinished()
+                ) {
+                    exchangeSynthToSUSD(newBalanceOfSynth);
+                }
             }
         }
 
@@ -243,14 +246,11 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         returns (uint256 _amountFreed)
     {
         // In order to work, manualRemoveFullLiquidity needs to be call 6 min in advance
-        require(checkWaitingPeriod(), "Wait for settlement period");
-        require(
-            valueOfInvestment() < DUST_THRESHOLD,
-            "Need to remove liquidity from vault first"
-        );
+        require(isWaitingPeriodFinished(), "Wait for settlement period");
+        require(valueOfInvestment() < DUST_THRESHOLD, "remove liquidity first");
         require(
             _balanceOfSynth() < DUST_THRESHOLD,
-            "Need to exchange synth to want first"
+            "exchange synth to want first"
         );
         _amountFreed = balanceOfWant();
     }
@@ -287,13 +287,18 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             );
     }
 
-    function _ethToWant(uint256 _amount) internal view returns (uint256) {
+    function ethToWant(uint256 _amtInWei)
+        public
+        view
+        override
+        returns (uint256)
+    {
         address[] memory path = new address[](2);
         path[0] = weth;
         path[1] = address(want);
 
         uint256[] memory amounts =
-            IUni(uniswapRouter).getAmountsOut(_amount, path);
+            IUni(uniswapRouter).getAmountsOut(_amtInWei, path);
 
         return amounts[amounts.length - 1];
     }
