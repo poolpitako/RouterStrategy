@@ -2,11 +2,13 @@ import pytest
 from brownie import chain, Wei, Contract, ZERO_ADDRESS
 
 
-def remove_old_strats(vault):
+def remove_old_strats(vault, strategy):
     for i in range(0, 20):
         strat_address = vault.withdrawalQueue(i)
         if ZERO_ADDRESS == strat_address:
             break
+        if strategy.address == strat_address:
+            continue
 
         vault.updateStrategyDebtRatio(strat_address, 0, {"from": vault.governance()})
 
@@ -26,12 +28,13 @@ def do_happy_case(old_vault, strategy, whale):
     token = Contract(strategy.want())
     gov = old_vault.governance()
 
-    remove_old_strats(old_vault)
+    remove_old_strats(old_vault, strategy)
 
     # add router to old_vault
     old_vault.setPerformanceFee(0, {"from": gov})
     old_vault.setManagementFee(0, {"from": gov})
-    old_vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
+    if not old_vault.strategies(strategy):
+        old_vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
     old_vault.setDepositLimit(0, {"from": gov})
 
     new_vault.setDepositLimit(2 ** 256 - 1, {"from": new_vault.governance()})
@@ -72,10 +75,3 @@ def do_happy_case(old_vault, strategy, whale):
     assert old_vault.strategies(strategy).dict()["totalGain"] == total_gain
     assert old_vault.strategies(strategy).dict()["totalLoss"] == 0
     assert old_vault.strategies(strategy).dict()["totalDebt"] == 0
-
-
-def test_yfi_router_043():
-    old_vault = Contract("0xE14d13d8B3b85aF791b2AADD661cDBd5E6097Db1")
-    strategy = Contract("0x0A5157244e4F82F100A461CA65C7b05C8dACf835")
-    whale = Contract("0x3ff33d9162ad47660083d7dc4bc02fb231c81677")
-    do_happy_case(old_vault, strategy, whale)

@@ -13,9 +13,7 @@ def test_synth_prepare_migration(
     gov,
     susd,
     sbtc,
-    wbtc,
     susd_whale,
-    wbtc_whale,
 ):
 
     clone_tx = synth_strategy.cloneSynthetixRouter(

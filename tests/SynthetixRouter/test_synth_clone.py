@@ -7,8 +7,7 @@ def route_susd_sbtc(
     synth_strategy,
     susd,
     sbtc,
-    wbtc,
-    wbtc_whale,
+    sbtc_whale,
     susd_whale,
     sbtc_vault,
     susd_vault,
@@ -17,14 +16,10 @@ def route_susd_sbtc(
     susd.approve(susd_vault, 2 ** 256 - 1, {"from": susd_whale})
     susd_vault.deposit({"from": susd_whale})
 
-    crvWTBC_SBTC = Contract("0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")
-    wbtc.approve(crvWTBC_SBTC, 2 ** 256 - 1, {"from": wbtc_whale})
-    crvWTBC_SBTC.exchange(1, 2, 1 * 10 ** 11, 0, {"from": wbtc_whale})
-
     chain.sleep(360 + 1)
     chain.mine(1)
 
-    assert sbtc.balanceOf(wbtc_whale) > 0
+    assert sbtc.balanceOf(sbtc_whale) > 0
 
     prev_value = synth_strategy.valueOfInvestment()
     prev_value_dest_vault = sbtc_vault.totalAssets()
@@ -55,7 +50,7 @@ def route_susd_sbtc(
     prev_value_dest_vault = sbtc_vault.totalAssets()
 
     # produce gains
-    sbtc.transfer(sbtc_vault, sbtc.balanceOf(wbtc_whale), {"from": wbtc_whale})
+    sbtc.transfer(sbtc_vault, sbtc.balanceOf(sbtc_whale), {"from": sbtc_whale})
 
     susd_vault.revokeStrategy(synth_strategy, {"from": gov})
 
@@ -92,9 +87,8 @@ def test_synth_cloned_strategy(
     gov,
     susd,
     sbtc,
-    wbtc,
     susd_whale,
-    wbtc_whale,
+    sbtc_whale,
 ):
 
     clone_tx = synth_strategy.cloneSynthetixRouter(
@@ -125,8 +119,7 @@ def test_synth_cloned_strategy(
         cloned_strategy,
         susd,
         sbtc,
-        wbtc,
-        wbtc_whale,
+        sbtc_whale,
         susd_whale,
         sbtc_vault,
         susd_vault,
@@ -144,9 +137,8 @@ def test_clone_of_clone(
     gov,
     susd,
     sbtc,
-    wbtc,
     susd_whale,
-    wbtc_whale,
+    sbtc_whale,
 ):
 
     clone_tx = synth_strategy.cloneSynthetixRouter(
