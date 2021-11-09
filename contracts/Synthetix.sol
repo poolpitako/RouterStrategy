@@ -41,7 +41,7 @@ contract Synthetix {
         )
             .currencyKey();
 
-        require(synthCurrencyKey != 0x0, "Synth currency key not set");
+        require(synthCurrencyKey != 0x0, "!key");
     }
 
     function _balanceOfSynth() internal view returns (uint256) {

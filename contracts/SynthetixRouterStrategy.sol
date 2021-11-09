@@ -246,7 +246,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         returns (uint256 _amountFreed)
     {
         // In order to work, manualRemoveFullLiquidity needs to be call 6 min in advance
-        require(isWaitingPeriodFinished(), "Wait for settlement period");
+        require(isWaitingPeriodFinished(), "settlement period");
         require(valueOfInvestment() < DUST_THRESHOLD, "remove liquidity first");
         require(
             _balanceOfSynth() < DUST_THRESHOLD,
