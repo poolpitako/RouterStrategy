@@ -178,7 +178,7 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
         susdBuffer = _susdBuffer;
     }
 
-    function isWaitingPeriodFinished() private returns (bool freeToMove) {
+    function isWaitingPeriodFinished() public view returns (bool freeToMove) {
         return
             _exchanger().maxSecsLeftInWaitingPeriod(
                 address(this),
