@@ -40,6 +40,8 @@ contract Synthetix {
             IReadProxy(address(resolver().getAddress(_synth))).target()
         )
             .currencyKey();
+
+        require(synthCurrencyKey != 0x0, "!key");
     }
 
     function _balanceOfSynth() internal view returns (uint256) {

@@ -13,9 +13,7 @@ def test_synth_prepare_migration(
     gov,
     susd,
     sbtc,
-    wbtc,
     susd_whale,
-    wbtc_whale,
 ):
 
     clone_tx = synth_strategy.cloneSynthetixRouter(
@@ -30,7 +28,7 @@ def test_synth_prepare_migration(
     )
 
     cloned_strategy = Contract.from_abi(
-        "Strategy", clone_tx.events["FullCloned"]["clone"], synth_strategy.abi
+        "Strategy", clone_tx.events["Cloned"]["clone"], synth_strategy.abi
     )
     susd.approve(susd_vault, 2 ** 256 - 1, {"from": susd_whale})
     susd_vault.deposit({"from": susd_whale})

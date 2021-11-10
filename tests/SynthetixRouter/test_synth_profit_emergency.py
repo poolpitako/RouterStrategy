@@ -11,7 +11,7 @@ def test_synth_profit_emergency(
     sbtc,
     wbtc,
     susd_whale,
-    wbtc_whale,
+    sbtc_whale,
 ):
 
     susd.approve(susd_vault, 2 ** 256 - 1, {"from": susd_whale})
@@ -32,11 +32,7 @@ def test_synth_profit_emergency(
     # Send profit to SBTC Vault
     prev_value = synth_strategy.valueOfInvestment()
 
-    crvWTBC_SBTC = Contract("0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")
-    wbtc.approve(crvWTBC_SBTC, 2 ** 256 - 1, {"from": wbtc_whale})
-    crvWTBC_SBTC.exchange(1, 2, 1 * 10 ** 11, 0, {"from": wbtc_whale})
-
-    sbtc.transfer(sbtc_vault, sbtc.balanceOf(wbtc_whale), {"from": wbtc_whale})
+    sbtc.transfer(sbtc_vault, sbtc.balanceOf(sbtc_whale), {"from": sbtc_whale})
     assert synth_strategy.valueOfInvestment() > prev_value
 
     synth_strategy.updateSUSDBuffer(10_000, {"from": gov})
@@ -66,7 +62,7 @@ def test_synth_profit_emergency_reverts(
     sbtc,
     wbtc,
     susd_whale,
-    wbtc_whale,
+    sbtc_whale,
 ):
 
     susd.approve(susd_vault, 2 ** 256 - 1, {"from": susd_whale})
@@ -87,11 +83,7 @@ def test_synth_profit_emergency_reverts(
     # Send profit to SBTC Vault
     prev_value = synth_strategy.valueOfInvestment()
 
-    crvWTBC_SBTC = Contract("0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")
-    wbtc.approve(crvWTBC_SBTC, 2 ** 256 - 1, {"from": wbtc_whale})
-    crvWTBC_SBTC.exchange(1, 2, 1 * 10 ** 11, 0, {"from": wbtc_whale})
-
-    sbtc.transfer(sbtc_vault, sbtc.balanceOf(wbtc_whale), {"from": wbtc_whale})
+    sbtc.transfer(sbtc_vault, sbtc.balanceOf(sbtc_whale), {"from": sbtc_whale})
     assert synth_strategy.valueOfInvestment() > prev_value
 
     synth_strategy.updateSUSDBuffer(10_000, {"from": gov})
