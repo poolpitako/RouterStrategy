@@ -208,7 +208,7 @@ def test_deposit_harvest_and_revert_withdraw(
 
     tx = sbtc_router.harvest({"from": gov})
 
-    print(f"Second harvest {tx.events['Harvested']}")
+    print(f"Third harvest {tx.events['Harvested']}")
     assert tx.events["Harvested"]["loss"] > 0
 
     chain.sleep(3600 + 1)
@@ -220,7 +220,7 @@ def test_deposit_harvest_and_revert_withdraw(
     chain.mine(1)
 
     hedging_vault.withdraw(
-        hedging_vault.balanceOf(susd_whale), susd_whale, 10, {"from": susd_whale}
+        hedging_vault.balanceOf(susd_whale), susd_whale, 100, {"from": susd_whale}
     )
     after_hedge_assets = hedging_vault.totalAssets()
 
