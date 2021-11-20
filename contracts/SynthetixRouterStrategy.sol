@@ -332,8 +332,10 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
 
         _debtPayment = Math.min(_debtOutstanding, _balanceOfWant);
 
+        totalAssetsAfterProfit = totalAssetsAfterProfit.sub(_debtPayment);
+
         if (totalDebt <= totalAssetsAfterProfit) {
-            _profit = _balanceOfWant.sub(_debtPayment);
+            _profit = totalAssetsAfterProfit.sub(totalDebt);
         } else {
             _loss = totalDebt.sub(totalAssetsAfterProfit);
         }
