@@ -326,16 +326,18 @@ contract SynthetixRouterStrategy is RouterStrategy, Synthetix {
             uint256 _debtPayment
         )
     {
-        uint256 totalDebt = vault.strategies(address(this)).totalDebt;
-        uint256 totalAssetsAfterProfit = estimatedTotalAssets();
+        uint256 _totalDebt = vault.strategies(address(this)).totalDebt;
+        uint256 _estimatedTotal = estimatedTotalAssets();
         uint256 _balanceOfWant = balanceOfWant();
 
         _debtPayment = Math.min(_debtOutstanding, _balanceOfWant);
 
-        if (totalDebt <= totalAssetsAfterProfit) {
-            _profit = _balanceOfWant.sub(_debtPayment);
+        uint256 _remainderWant = _balanceOfWant.sub(_debtPayment);
+
+        if (_totalDebt <= _estimatedTotal) {
+            _profit = Math.min(_remainderWant, _estimatedTotal.sub(_totalDebt));
         } else {
-            _loss = totalDebt.sub(totalAssetsAfterProfit);
+            _loss = _totalDebt.sub(_estimatedTotal);
         }
     }
 }
