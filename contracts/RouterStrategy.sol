@@ -14,6 +14,7 @@ import "@openzeppelin/contracts/math/Math.sol";
 
 interface ILossChecker {
     function checkLoss(uint, uint) external view returns (uint);
+    function sweep(address, uint) external;
 }
 
 interface IVault is IERC20 {
@@ -169,7 +170,11 @@ contract RouterStrategy is BaseStrategy {
             _loss = 0;
         }
 
-        require(lossChecker.checkLoss(_profit, _loss) <= feeLossTolerance, "TooLossy!");
+        uint expectedLoss = lossChecker.checkLoss(_profit, _loss);
+        if (expectedLoss > feeLossTolerance){
+            require(want.balanceOf(address(lossChecker)) > expectedLoss, "LossyWithFees");
+            lossChecker.sweep(address(want), expectedLoss);
+        }
     }
 
     function adjustPosition(uint256 _debtOutstanding)

@@ -1,6 +1,11 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
+import {
+    SafeERC20,
+    IERC20
+} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+
 interface IVault {
     struct StrategyParams {
         uint performanceFee;
@@ -27,9 +32,11 @@ interface IStrategy {
 /// @notice Designed to prevent Management fees from creating lossy reports on Yearn vaults with API < 0.3.5
 /// @dev Begining with vaults API v0.3.5 management fees are adjust dynamically on report to prevent loss
 contract LossOnFeeChecker {
+    using SafeERC20 for IERC20;
 
     uint constant MAX_BPS = 10_000;
     uint constant SECS_PER_YEAR = 31_557_600;
+    mapping(address=>bool) public approvedSweepers;
 
     /// @notice Check if harvest does not contain a loss after fees
     /// @dev should be called automically report transaction
@@ -82,6 +89,18 @@ contract LossOnFeeChecker {
             uint grossLoss = loss - gain;
             return governanceFee + grossLoss;
         }
+    }
+
+    function sweep(address _token, uint _amount) external {
+        require(approvedSweepers[msg.sender], "!approved");
+        IERC20(_token).transfer(msg.sender, _amount);
+    }
+
+    function approveSweepers(address _sweeper, bool _approved) external {
+        address ychad = 0xFEB4acf3df3cDEA7399794D0869ef76A6EfAff52;
+        address brain = 0x16388463d60FFE0661Cf7F1f31a7D658aC790ff7;
+        require(msg.sender == ychad || msg.sender == brain);
+        approvedSweepers[_sweeper] = _approved;
     }
 }
 

@@ -26,7 +26,6 @@ def test_migrate(origin_vault, destination_vault, strategy, gov, loss_checker):
     whale = accounts.at('0x99ac10631F69C753DDb595D074422a0922D9056B', force=True)
     want = Contract(origin_vault.token(),owner=whale)
     # want.transfer(strategy, expected_loss + 1e17)
-    assert False
 
     totalShares = origin_vault.totalSupply()
     tx = strategy.harvest({"from": gov})
@@ -34,7 +33,6 @@ def test_migrate(origin_vault, destination_vault, strategy, gov, loss_checker):
     assert totalSharesAfter <= totalShares
 
     print(tx.events['Harvested'])
-    assert False
     # origin_vault.updateStrategyDebtRatio(strategy, 10_000, {'from':gov})
     
 
