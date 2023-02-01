@@ -1,5 +1,5 @@
 import pytest
-from brownie import config, Contract, ZERO_ADDRESS
+from brownie import config, Contract, ZERO_ADDRESS, LossOnFeeChecker
 from eth_abi import encode_single
 
 
@@ -52,29 +52,26 @@ def yvweth_032():
 def yvweth_042():
     yield Contract("0xa258C4606Ca8206D8aA700cE2143D7db854D168c")
 
+@pytest.fixture
+def yvsteth_030(gov):
+    yield Contract("0xdCD90C7f6324cfa40d7169ef80b12031770B4325",owner=gov)
+
 
 @pytest.fixture
-def origin_vault():
+def yvsteth_045(gov):
+    yield Contract("0x5B8C556B8b2a78696F0B9B830B3d67623122E270",owner=gov)
+
+
+@pytest.fixture
+def origin_vault(yvsteth_030):
     # origin vault of the route
-    yield Contract("0xa9fE4601811213c340e850ea305481afF02f5b28")
+    yield yvsteth_030
 
 
 @pytest.fixture
-def destination_vault():
+def destination_vault(yvsteth_045):
     # destination vault of the route
-    yield Contract("0xa258C4606Ca8206D8aA700cE2143D7db854D168c")
-
-
-@pytest.fixture
-def origin_vault():
-    # origin vault of the route
-    yield Contract("0xa9fE4601811213c340e850ea305481afF02f5b28")
-
-
-@pytest.fixture
-def destination_vault():
-    # destination vault of the route
-    yield Contract("0xa258C4606Ca8206D8aA700cE2143D7db854D168c")
+    yield yvsteth_045
 
 
 @pytest.fixture
@@ -114,6 +111,9 @@ def weth_amout(user, weth):
 def health_check():
     yield Contract("0xddcea799ff1699e98edf118e0629a974df7df012")
 
+@pytest.fixture
+def loss_checker(strategist):
+    yield strategist.deploy(LossOnFeeChecker)
 
 @pytest.fixture
 def vault(pm, gov, rewards, guardian, management, token):
@@ -134,10 +134,11 @@ def strategy(
     destination_vault,
     RouterStrategy,
     gov,
+    loss_checker,
     health_check,
 ):
     strategy = strategist.deploy(
-        RouterStrategy, origin_vault, destination_vault, "Route yvWETH 042"
+        RouterStrategy, origin_vault, destination_vault, loss_checker, "Strat "+origin_vault.symbol()
     )
     strategy.setKeeper(keeper)
 
@@ -147,12 +148,16 @@ def strategy(
             break
 
         origin_vault.updateStrategyDebtRatio(strat_address, 0, {"from": gov})
+        try:
+            Contract(strat_address,owner=gov).setDoHealthCheck(False)
+        except:
+            pass
+        Contract(strat_address,owner=gov).harvest()
 
     strategy.setHealthCheck(health_check, {"from": origin_vault.governance()})
-    origin_vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
+    origin_vault.addStrategy(strategy, 10_000, 0, 0, {"from": gov})
 
     yield strategy
-
 
 @pytest.fixture
 def unique_strategy(

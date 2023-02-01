@@ -12,15 +12,15 @@ import {
 } from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
+interface ILossChecker {
+    function checkLoss(uint, uint) external view returns (uint);
+}
+
 interface IVault is IERC20 {
     function token() external view returns (address);
-
     function decimals() external view returns (uint256);
-
     function deposit() external;
-
     function pricePerShare() external view returns (uint256);
-
     function withdraw(
         uint256 amount,
         address account,
@@ -35,15 +35,18 @@ contract RouterStrategy is BaseStrategy {
 
     string internal strategyName;
     IVault public yVault;
+    ILossChecker public lossChecker;
+    uint256 public feeLossTolerance;
     uint256 public maxLoss;
     bool internal isOriginal = true;
 
     constructor(
         address _vault,
         address _yVault,
+        address _lossChecker,
         string memory _strategyName
     ) public BaseStrategy(_vault) {
-        _initializeThis(_yVault, _strategyName);
+        _initializeThis(_yVault, _strategyName, _lossChecker);
     }
 
     event Cloned(address indexed clone);
@@ -54,6 +57,7 @@ contract RouterStrategy is BaseStrategy {
         address _rewards,
         address _keeper,
         address _yVault,
+        address _lossChecker,
         string memory _strategyName
     ) external virtual returns (address newStrategy) {
         require(isOriginal);
@@ -80,6 +84,7 @@ contract RouterStrategy is BaseStrategy {
             _rewards,
             _keeper,
             _yVault,
+            _lossChecker,
             _strategyName
         );
 
@@ -92,18 +97,21 @@ contract RouterStrategy is BaseStrategy {
         address _rewards,
         address _keeper,
         address _yVault,
+        address _lossChecker,
         string memory _strategyName
     ) public {
         _initialize(_vault, _strategist, _rewards, _keeper);
         require(address(yVault) == address(0));
-        _initializeThis(_yVault, _strategyName);
+        _initializeThis(_yVault, _strategyName, _lossChecker);
     }
 
-    function _initializeThis(address _yVault, string memory _strategyName)
+    function _initializeThis(address _yVault, string memory _strategyName, address _lossChecker)
         internal
     {
         yVault = IVault(_yVault);
         strategyName = _strategyName;
+        lossChecker = ILossChecker(_lossChecker);
+        IERC20(address(want)).approve(_yVault, uint256(-1));
     }
 
     function name() external view override returns (string memory) {
@@ -120,10 +128,6 @@ contract RouterStrategy is BaseStrategy {
         return balanceOfWant().add(valueOfInvestment());
     }
 
-    function delegatedAssets() external view override returns (uint256) {
-        return vault.strategies(address(this)).totalDebt;
-    }
-
     function prepareReturn(uint256 _debtOutstanding)
         internal
         virtual
@@ -138,7 +142,7 @@ contract RouterStrategy is BaseStrategy {
         uint256 _totalAsset = estimatedTotalAssets();
 
         // Estimate the profit we have so far
-        if (_totalDebt <= _totalAsset) {
+        if (_totalDebt < _totalAsset) {
             _profit = _totalAsset.sub(_totalDebt);
         }
 
@@ -164,6 +168,8 @@ contract RouterStrategy is BaseStrategy {
             _profit = _profit.sub(_loss);
             _loss = 0;
         }
+
+        require(lossChecker.checkLoss(_profit, _loss) <= feeLossTolerance, "TooLossy!");
     }
 
     function adjustPosition(uint256 _debtOutstanding)
@@ -177,7 +183,6 @@ contract RouterStrategy is BaseStrategy {
 
         uint256 balance = balanceOfWant();
         if (balance > 0) {
-            _checkAllowance(address(yVault), address(want), balance);
             yVault.deposit();
         }
     }
@@ -221,20 +226,6 @@ contract RouterStrategy is BaseStrategy {
         yVault.withdraw(sharesToWithdraw, address(this), maxLoss);
     }
 
-    function liquidateAllPositions()
-        internal
-        virtual
-        override
-        returns (uint256 _amountFreed)
-    {
-        return
-            yVault.withdraw(
-                yVault.balanceOf(address(this)),
-                address(this),
-                maxLoss
-            );
-    }
-
     function prepareMigration(address _newStrategy) internal virtual override {
         IERC20(yVault).safeTransfer(
             _newStrategy,
@@ -252,29 +243,12 @@ contract RouterStrategy is BaseStrategy {
         ret[0] = address(yVault);
     }
 
-    function ethToWant(uint256 _amtInWei)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        return _amtInWei;
-    }
-
-    function setMaxLoss(uint256 _maxLoss) public onlyVaultManagers {
+    function setMaxLoss(uint256 _maxLoss) public onlyAuthorized {
         maxLoss = _maxLoss;
     }
 
-    function _checkAllowance(
-        address _contract,
-        address _token,
-        uint256 _amount
-    ) internal {
-        if (IERC20(_token).allowance(address(this), _contract) < _amount) {
-            IERC20(_token).safeApprove(_contract, 0);
-            IERC20(_token).safeApprove(_contract, type(uint256).max);
-        }
+    function setFeeLossTolerance(uint256 _tolerance) public onlyAuthorized {
+        feeLossTolerance = _tolerance;
     }
 
     function balanceOfWant() public view returns (uint256) {
@@ -291,8 +265,10 @@ contract RouterStrategy is BaseStrategy {
 
     function valueOfInvestment() public view virtual returns (uint256) {
         return
-            yVault.balanceOf(address(this)).mul(yVault.pricePerShare()).div(
-                10**yVault.decimals()
-            );
+            yVault.balanceOf(address(this))
+                .mul(yVault.pricePerShare())
+                .div(
+                    10**yVault.decimals()
+                );
     }
 }
