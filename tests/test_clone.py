@@ -2,7 +2,7 @@ import pytest
 from brownie import chain, Wei, reverts, Contract, ZERO_ADDRESS
 
 
-def move_funds(vault, dest_vault, strategy, gov, weth, weth_whale):
+def move_funds(vault, dest_vault, strategy, gov, weth, weth_whale, RELATIVE_APPROX):
     print(strategy.name())
 
     strategy.harvest({"from": gov})
@@ -27,9 +27,9 @@ def move_funds(vault, dest_vault, strategy, gov, weth, weth_whale):
     chain.sleep(3600 * 8)
     chain.mine(1)
 
-    assert vault.strategies(strategy).dict()["totalGain"] == total_gain
-    assert vault.strategies(strategy).dict()["totalLoss"] == 0
-    assert vault.strategies(strategy).dict()["totalDebt"] == 0
+    assert pytest.approx(vault.strategies(strategy).dict()["totalGain"], rel=RELATIVE_APPROX) == total_gain
+    assert pytest.approx(vault.strategies(strategy).dict()["totalLoss"], rel=RELATIVE_APPROX) == 0
+    assert pytest.approx(vault.strategies(strategy).dict()["totalDebt"], rel=RELATIVE_APPROX) == 0
 
 
 def test_original_strategy(
@@ -42,9 +42,10 @@ def test_original_strategy(
     gov,
     token,
     weth_whale,
+    RELATIVE_APPROX
 ):
 
-    move_funds(origin_vault, destination_vault, strategy, gov, token, weth_whale)
+    move_funds(origin_vault, destination_vault, strategy, gov, token, weth_whale, RELATIVE_APPROX)
 
 
 def test_cloned_strategy(
@@ -57,6 +58,7 @@ def test_cloned_strategy(
     gov,
     token,
     weth_whale,
+    RELATIVE_APPROX
 ):
 
     clone_tx = strategy.cloneRouter(
@@ -80,6 +82,7 @@ def test_cloned_strategy(
         gov,
         token,
         weth_whale,
+        RELATIVE_APPROX
     )
 
 

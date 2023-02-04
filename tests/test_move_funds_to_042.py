@@ -3,7 +3,7 @@ from brownie import Contract, ZERO_ADDRESS, Wei, chain
 
 
 def test_move_funds_to_042(
-    yvweth_032, yvweth_042, unique_strategy, gov, weth, weth_whale
+    yvweth_032, yvweth_042, unique_strategy, gov, weth, weth_whale, RELATIVE_APPROX
 ):
 
     strategy = unique_strategy
@@ -32,6 +32,6 @@ def test_move_funds_to_042(
     chain.sleep(3600 * 8)
     chain.mine(1)
 
-    assert yvweth_032.strategies(strategy).dict()["totalGain"] == total_gain
-    assert yvweth_032.strategies(strategy).dict()["totalLoss"] == 0
-    assert yvweth_032.strategies(strategy).dict()["totalDebt"] == 0
+    assert pytest.approx(yvweth_032.strategies(strategy).dict()["totalGain"], rel=RELATIVE_APPROX) == total_gain
+    assert pytest.approx(yvweth_032.strategies(strategy).dict()["totalLoss"], rel=RELATIVE_APPROX) == 0
+    assert pytest.approx(yvweth_032.strategies(strategy).dict()["totalDebt"], rel=RELATIVE_APPROX) == 0

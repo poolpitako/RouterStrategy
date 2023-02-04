@@ -21,6 +21,14 @@ interface IVault is IERC20 {
 
     function pricePerShare() external view returns (uint256);
 
+    function totalAssets() external view returns (uint256);
+
+    function lockedProfit() external view returns (uint256);
+
+    function lockedProfitDegradation() external view returns (uint256);
+
+    function lastReport() external view returns (uint256);
+
     function withdraw(
         uint256 amount,
         address account,
@@ -205,6 +213,10 @@ contract RouterStrategy is BaseStrategy {
         }
     }
 
+    function withdrawFromYVault(uint256 _amount) external onlyVaultManagers {
+        _withdrawFromYVault(_amount);
+    }
+
     function _withdrawFromYVault(uint256 _amount) internal {
         if (_amount == 0) {
             return;
@@ -286,13 +298,52 @@ contract RouterStrategy is BaseStrategy {
         view
         returns (uint256)
     {
-        return amount.mul(10**yVault.decimals()).div(yVault.pricePerShare());
+        return _valueInYVaultShares(amount);
     }
 
     function valueOfInvestment() public view virtual returns (uint256) {
-        return
-            yVault.balanceOf(address(this)).mul(yVault.pricePerShare()).div(
-                10**yVault.decimals()
+        return _yVaultSharesValue(yVault.balanceOf(address(this)));
+    }
+
+    function _valueInYVaultShares(uint256 value)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 totalSupply = yVault.totalSupply();
+        uint256 freeFunds = _calculateYVaultFreeFunds();
+        if (freeFunds == 0) return 0;
+        return (value.mul(totalSupply).div(freeFunds));
+    }
+
+    function _yVaultSharesValue(uint256 shares)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 totalSupply = yVault.totalSupply();
+        if (totalSupply == 0) return shares;
+
+        uint256 freeFunds = _calculateYVaultFreeFunds();
+        return (shares.mul(freeFunds).div(totalSupply));
+    }
+
+    function _calculateYVaultFreeFunds()
+        private
+        view
+        returns (uint256 freeFunds)
+    {
+        freeFunds = yVault.totalAssets();
+        uint256 lockedFundsRatio =
+            (block.timestamp.sub(yVault.lastReport())).mul(
+                yVault.lockedProfitDegradation()
             );
+
+        if (lockedFundsRatio < 10**18) {
+            uint256 lockedProfit = yVault.lockedProfit();
+            freeFunds = freeFunds.sub(
+                lockedProfit.sub(lockedFundsRatio.mul(lockedProfit).div(10**18))
+            );
+        }
     }
 }
