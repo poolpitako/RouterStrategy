@@ -79,7 +79,7 @@ def destination_vault():
 
 @pytest.fixture
 def weth_whale(accounts):
-    yield accounts.at("0xc1aae9d18bbe386b102435a8632c8063d31e747c", True)
+    yield accounts.at("0x2feb1512183545f48f6b9c5b4ebfcaf49cfca6f3", True)
 
 
 @pytest.fixture
@@ -89,11 +89,11 @@ def token():
 
 
 @pytest.fixture
-def amount(accounts, token, user):
-    amount = 10_000 * 10 ** token.decimals()
+def amount(accounts, token, user, weth_whale):
+    amount = 1000 * 10 ** token.decimals()
     # In order to get some funds for the token you are about to use,
     # it impersonate an exchange address to use it's funds.
-    reserve = accounts.at("0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643", force=True)
+    reserve = accounts.at(weth_whale, force=True)
     token.transfer(user, amount, {"from": reserve})
     yield amount
 
@@ -146,7 +146,9 @@ def strategy(
         if ZERO_ADDRESS == strat_address:
             break
 
-        origin_vault.updateStrategyDebtRatio(strat_address, 0, {"from": gov})
+        if origin_vault.strategies(strat_address)['debtRatio'] > 0:
+            origin_vault.updateStrategyDebtRatio(strat_address, 0, {"from": gov})
+            Contract(strat_address).harvest({"from":gov})
 
     strategy.setHealthCheck(health_check, {"from": origin_vault.governance()})
     origin_vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
@@ -169,7 +171,9 @@ def unique_strategy(
         if ZERO_ADDRESS == strat_address:
             break
 
-        yvweth_032.updateStrategyDebtRatio(strat_address, 0, {"from": gov})
+        if yvweth_032.strategies(strat_address)['debtRatio'] > 0:
+            yvweth_032.updateStrategyDebtRatio(strat_address, 0, {"from": gov})
+            Contract(strat_address).harvest({"from":gov})
 
     yvweth_032.setPerformanceFee(0, {"from": gov})
     yvweth_032.setManagementFee(0, {"from": gov})
