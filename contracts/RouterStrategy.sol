@@ -13,8 +13,7 @@ import {
 import "@openzeppelin/contracts/math/Math.sol";
 
 interface ILossChecker {
-    function checkLoss(uint, uint) external view returns (uint);
-    function sweep(address, uint) external;
+    function check_loss(uint, uint) external view returns (uint);
 }
 
 interface ISharesHelper {
@@ -44,7 +43,8 @@ contract RouterStrategy is BaseStrategy {
     uint256 public feeLossTolerance;
     uint256 public maxLoss;
     bool internal isOriginal = true;
-    ISharesHelper public constant sharesHelper = ISharesHelper(0x444443bae5bB8640677A8cdF94CB8879Fec948Ec);
+    ISharesHelper public constant sharesHelper = 
+        ISharesHelper(0x444443bae5bB8640677A8cdF94CB8879Fec948Ec); // CREATE2 generated address, deployable to all chains
 
     constructor(
         address _vault,
@@ -175,10 +175,10 @@ contract RouterStrategy is BaseStrategy {
             _loss = 0;
         }
 
-        uint expectedLoss = lossChecker.checkLoss(_profit, _loss);
-        if (expectedLoss > feeLossTolerance){
+        uint expectedLoss = lossChecker.check_loss(_profit, _loss);
+        uint _feeLossTolerance = feeLossTolerance;
+        if (expectedLoss > _feeLossTolerance){
             require(want.balanceOf(address(lossChecker)) > expectedLoss, "LossyWithFees");
-            lossChecker.sweep(address(want), expectedLoss);
         }
     }
 

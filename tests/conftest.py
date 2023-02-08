@@ -112,10 +112,6 @@ def health_check():
     yield Contract("0xddcea799ff1699e98edf118e0629a974df7df012")
 
 @pytest.fixture
-def loss_checker(strategist):
-    yield strategist.deploy(LossOnFeeChecker)
-
-@pytest.fixture
 def vault(pm, gov, rewards, guardian, management, token):
     Vault = pm(config["dependencies"][0]).Vault
     vault = guardian.deploy(Vault)
@@ -125,6 +121,11 @@ def vault(pm, gov, rewards, guardian, management, token):
     yield vault
     yield Contract("0xa9fE4601811213c340e850ea305481afF02f5b28")
 
+@pytest.fixture
+def loss_checker(strategist, gov):
+    loss_checker = strategist.deploy(LossOnFeeChecker)
+    # loss_checker.approve_sweeper(gov,True,{'from':gov})
+    yield loss_checker
 
 @pytest.fixture
 def strategy(
@@ -156,7 +157,7 @@ def strategy(
 
     strategy.setHealthCheck(health_check, {"from": origin_vault.governance()})
     origin_vault.addStrategy(strategy, 10_000, 0, 0, {"from": gov})
-
+    # loss_checker.approve_sweeper(strategy,True,{'from':gov})
     yield strategy
 
 @pytest.fixture

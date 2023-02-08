@@ -12,6 +12,26 @@
 from vyper.interfaces import ERC20
 from vyper.interfaces import ERC20Detailed
 
+interface IVault:
+    def totalAssets() -> uint256: view
+    def managementFee() -> uint256: view
+    def performanceFee() -> uint256: view
+    def strategies(strategy: address) -> StrategyParams: view
+    def lastReport() -> uint256: view
+    def totalDebt() -> uint256: view
+    def apiVersion() -> String[28]: view
+
+interface IVaultNew:
+    def strategies(strategy: address) -> StrategyParamsNew: view
+
+interface IStrategy:
+    def vault() -> address: view
+    def want() -> address: view
+
+event Sweep:
+    sweeper: indexed(address)
+    token: indexed(address)
+    amount: uint256
 
 struct StrategyParams:
     performanceFee: uint256
@@ -23,18 +43,16 @@ struct StrategyParams:
     totalGain: uint256
     totalLoss: uint256
 
-interface IVault:
-    def totalAssets() -> uint256: view
-    def managementFee() -> uint256: view
-    def performanceFee() -> uint256: view
-    def strategies(strategy: address) -> StrategyParams: view
-    def lastReport() -> uint256: view
-    def totalDebt() -> uint256: view
-    def apiVersion() -> String[28]: view
-
-interface IStrategy:
-    def vault() -> address: view
-    def want() -> address: view
+struct StrategyParamsNew:
+    performanceFee: uint256
+    activation: uint256
+    debtRatio: uint256
+    minDebtPerHarvest: uint256
+    maxDebtPerHarvest: uint256
+    lastReport: uint256
+    totalDebt: uint256
+    totalGain: uint256
+    totalLoss: uint256 
 
 MAX_BPS: constant(uint256) = 10_000
 SECS_PER_YEAR: constant(uint256) = 31_557_600
@@ -42,7 +60,7 @@ approved_sweepers: public(HashMap[address, bool])
 
 @external
 @view
-def checkLoss(gain: uint256, loss: uint256, strategy: address = msg.sender) -> uint256:
+def check_loss(gain: uint256, loss: uint256, strategy: address = msg.sender) -> uint256:
     return self._check(gain, loss, strategy)
 
 @internal
@@ -59,7 +77,7 @@ def _check(gain: uint256, loss: uint256, strategy: address) -> uint256:
         Fee calculations replicate logic from vault versions
         0.3.0 - mgmt fee calculated based on total assets in vault
         0.3.1 - mgmt calculated based on total debt of vault
-        0.3.2 - fee calculations are same as 0.3.1
+        0.3.2 - fee calculations are same as 0.3.1, but StrategyParams are different
     """
 
     vault: IVault = IVault(IStrategy(strategy).vault())
@@ -80,13 +98,16 @@ def _check(gain: uint256, loss: uint256, strategy: address) -> uint256:
     if time_since == 0:
         return 0
 
-    params: StrategyParams = vault.strategies(strategy)
-
     api: String[28] = vault.apiVersion()
     if api == "0.3.0":
-        return self._calc030(params, vault, gain, loss, management_fee, total_assets, time_since)
-    elif api == "0.3.1" or api == "0.3.2":
-        return self._calc031(params, vault, gain, loss, management_fee, time_since)
+        params: StrategyParams = vault.strategies(strategy)
+        return self._calc030(vault, gain, loss, management_fee, params.performanceFee, total_assets, time_since)
+    if api == "0.3.1":
+        params: StrategyParams = vault.strategies(strategy)
+        return self._calc031(vault, gain, loss, management_fee, params.performanceFee, time_since)
+    if api == "0.3.2":
+        params: StrategyParamsNew = IVaultNew(vault.address).strategies(strategy)
+        return self._calc031(vault, gain, loss, management_fee, params.performanceFee, time_since)
     else:
         raise # @dev: Vault api version not supported
 
@@ -95,11 +116,11 @@ def _check(gain: uint256, loss: uint256, strategy: address) -> uint256:
 @internal
 @view
 def _calc030(
-    params: StrategyParams,
     vault: IVault,
     gain: uint256,
     loss: uint256,
     management_fee: uint256,
+    strat_perf_fee: uint256,
     total_assets: uint256,
     time_since: uint256
 ) -> uint256:
@@ -110,7 +131,7 @@ def _calc030(
     )
 
     if gain > 0:
-        strategist_fee: uint256 = gain * params.performanceFee / MAX_BPS
+        strategist_fee: uint256 = gain * strat_perf_fee / MAX_BPS
         performance_fee: uint256 = gain * vault.performanceFee() / MAX_BPS
         governance_fee = governance_fee + strategist_fee + performance_fee
 
@@ -129,11 +150,11 @@ def _calc030(
 @internal
 @view
 def _calc031(
-    params: StrategyParams,
     vault: IVault,
     gain: uint256,
     loss: uint256,
     management_fee: uint256,
+    strat_perf_fee: uint256,
     time_since: uint256
 ) -> uint256:
     vault_debt: uint256 = vault.totalDebt()
@@ -144,7 +165,7 @@ def _calc031(
     )
 
     if gain > 0:
-        strategist_fee: uint256 = gain * params.performanceFee / MAX_BPS
+        strategist_fee: uint256 = gain * strat_perf_fee / MAX_BPS
         performance_fee: uint256 = gain * vault.performanceFee() / MAX_BPS
         governance_fee = governance_fee + strategist_fee + performance_fee
 
@@ -159,27 +180,10 @@ def _calc031(
     return 0
 
 @external
-def sweep(token: address, amount: uint256):
+def sweep(token: address):
     """
-    @notice
-        Allow a strategy to pull a token balance to offset losses.
-    @dev
-        Intended to transfer precise amount of want based on losses generated from fees.
-        Because a loss can increase block by block, this method allows us to atomically
-        airdrop an amount of want with some buffer, harvest the strategy, then sweep out
-        the any buffer atomically.
-        Token balances should be kept at 0 during normal operation.
+    @notice Allow governance ms to sweep
     """
-    assert self.approved_sweepers[msg.sender] # @dev: !approved
-    ERC20(token).transfer(msg.sender, amount, default_return_value=True)
-
-@external
-def approve_sweepers(sweeper: address, approved: bool):
-    """
-    @notice
-        Approve strategies to sweep
-    """
-    ychad: address = 0xFEB4acf3df3cDEA7399794D0869ef76A6EfAff52
-    ybrain: address = 0x16388463d60FFE0661Cf7F1f31a7D658aC790ff7
-    assert msg.sender in [ychad, ybrain] # @dev: !approved
-    self.approved_sweepers[sweeper] = approved
+    assert msg.sender == 0xFEB4acf3df3cDEA7399794D0869ef76A6EfAff52 # @dev: !approved
+    bal: uint256 =  ERC20(token).balanceOf(self)
+    ERC20(token).transfer(msg.sender, bal, default_return_value=True)
