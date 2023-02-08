@@ -176,10 +176,7 @@ contract RouterStrategy is BaseStrategy {
         }
 
         uint expectedLoss = lossChecker.check_loss(_profit, _loss);
-        uint _feeLossTolerance = feeLossTolerance;
-        if (expectedLoss > _feeLossTolerance){
-            require(want.balanceOf(address(lossChecker)) > expectedLoss, "LossyWithFees");
-        }
+        require(feeLossTolerance >= expectedLoss, "LossyWithFees");
     }
 
     function adjustPosition(uint256 _debtOutstanding)
