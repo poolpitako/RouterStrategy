@@ -124,7 +124,7 @@ def _calc030(
     total_assets: uint256,
     time_since: uint256
 ) -> uint256:
-    governance_fee: uint256 = (
+    total_fee: uint256 = (
         total_assets * time_since * management_fee
         / MAX_BPS
         / SECS_PER_YEAR
@@ -133,17 +133,17 @@ def _calc030(
     if gain > 0:
         strategist_fee: uint256 = gain * strat_perf_fee / MAX_BPS
         performance_fee: uint256 = gain * vault.performanceFee() / MAX_BPS
-        governance_fee = governance_fee + strategist_fee + performance_fee
+        total_fee = total_fee + strategist_fee + performance_fee
 
     if gain >= loss:
         gross_profit: uint256 = gain - loss
-        if gross_profit >= governance_fee:
+        if gross_profit >= total_fee:
             return 0
         else:
-            return governance_fee - gross_profit
+            return total_fee - gross_profit
     else:
         gross_loss: uint256 = loss - gain
-        return gross_loss + governance_fee
+        return gross_loss + total_fee
 
     return 0
 
@@ -158,7 +158,7 @@ def _calc031(
     time_since: uint256
 ) -> uint256:
     vault_debt: uint256 = vault.totalDebt()
-    governance_fee: uint256 = (
+    total_fee: uint256 = (
         vault_debt * time_since * management_fee
         / MAX_BPS
         / SECS_PER_YEAR
@@ -167,15 +167,15 @@ def _calc031(
     if gain > 0:
         strategist_fee: uint256 = gain * strat_perf_fee / MAX_BPS
         performance_fee: uint256 = gain * vault.performanceFee() / MAX_BPS
-        governance_fee = governance_fee + strategist_fee + performance_fee
+        total_fee = total_fee + strategist_fee + performance_fee
 
     if gain >= loss:
         gross_profit: uint256 = gain - loss
-        if gross_profit >= governance_fee:
+        if gross_profit >= total_fee:
             return 0
     else:
         gross_loss: uint256 = loss - gain
-        return gross_loss + governance_fee
+        return gross_loss + total_fee
 
     return 0
 
