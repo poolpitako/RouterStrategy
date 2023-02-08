@@ -56,7 +56,6 @@ struct StrategyParamsNew:
 
 MAX_BPS: constant(uint256) = 10_000
 SECS_PER_YEAR: constant(uint256) = 31_557_600
-approved_sweepers: public(HashMap[address, bool])
 
 @external
 @view
