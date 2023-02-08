@@ -17,11 +17,15 @@ interface ILossChecker {
     function sweep(address, uint) external;
 }
 
+interface ISharesHelper {
+    function sharesToAmount(address, uint) external view returns (uint);
+    function amountToShares(address, uint) external view returns (uint);
+}
+
 interface IVault is IERC20 {
     function token() external view returns (address);
     function decimals() external view returns (uint256);
     function deposit() external;
-    function pricePerShare() external view returns (uint256);
     function withdraw(
         uint256 amount,
         address account,
@@ -40,6 +44,7 @@ contract RouterStrategy is BaseStrategy {
     uint256 public feeLossTolerance;
     uint256 public maxLoss;
     bool internal isOriginal = true;
+    ISharesHelper public constant sharesHelper = ISharesHelper(0x444443bae5bB8640677A8cdF94CB8879Fec948Ec);
 
     constructor(
         address _vault,
@@ -265,15 +270,10 @@ contract RouterStrategy is BaseStrategy {
         view
         returns (uint256)
     {
-        return amount.mul(10**yVault.decimals()).div(yVault.pricePerShare());
+        return sharesHelper.amountToShares(address(yVault), amount);
     }
 
     function valueOfInvestment() public view virtual returns (uint256) {
-        return
-            yVault.balanceOf(address(this))
-                .mul(yVault.pricePerShare())
-                .div(
-                    10**yVault.decimals()
-                );
+        return sharesHelper.sharesToAmount(address(yVault), yVault.balanceOf(address(this)));
     }
 }

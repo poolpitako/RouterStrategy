@@ -19,7 +19,7 @@ def test_migrate(origin_vault, destination_vault, strategy, gov, loss_checker):
     # Let's set mgmt fee pretty high
     origin_vault.setManagementFee(500, {"from": gov})
 
-    expectedLoss = loss_checker.checkLoss(strategy, 0, 0)
+    expectedLoss = loss_checker.checkLoss(0, 0, strategy)
     print(f'EXPECTED LOSS AMOUNT = {expectedLoss}')
     expected_loss = emulate_fees(strategy, origin_vault)
 

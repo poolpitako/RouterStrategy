@@ -31,7 +31,7 @@ interface IStrategy {
 /// @title LossOnFeeChecker
 /// @notice Designed to prevent Management fees from creating lossy reports on Yearn vaults with API < 0.3.5
 /// @dev Begining with vaults API v0.3.5 management fees are adjust dynamically on report to prevent loss
-contract LossOnFeeChecker {
+contract LossOnFeeCheckerSol {
     using SafeERC20 for IERC20;
 
     uint constant MAX_BPS = 10_000;
