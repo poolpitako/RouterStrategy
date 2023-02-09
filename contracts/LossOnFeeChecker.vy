@@ -172,6 +172,8 @@ def _calc031(
         gross_profit: uint256 = gain - loss
         if gross_profit >= total_fee:
             return 0
+        else:
+            return total_fee - gross_profit
     else:
         gross_loss: uint256 = loss - gain
         return gross_loss + total_fee
