@@ -123,8 +123,9 @@ def vault(pm, gov, rewards, guardian, management, token):
 
 @pytest.fixture
 def loss_checker(strategist, gov):
-    loss_checker = strategist.deploy(LossOnFeeChecker)
+    # loss_checker = strategist.deploy(LossOnFeeChecker)
     # loss_checker.approve_sweeper(gov,True,{'from':gov})
+    loss_checker = Contract('0x6b6003d4Bc320Ed25E8E2be49600EC1006676239')
     yield loss_checker
 
 @pytest.fixture
@@ -139,7 +140,7 @@ def strategy(
     health_check,
 ):
     strategy = strategist.deploy(
-        RouterStrategy, origin_vault, destination_vault, loss_checker, "Strat "+origin_vault.symbol()
+        RouterStrategy, origin_vault, destination_vault, "Strat "+origin_vault.symbol()
     )
     strategy.setKeeper(keeper)
 

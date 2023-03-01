@@ -39,7 +39,7 @@ contract RouterStrategy is BaseStrategy {
 
     string internal strategyName;
     IVault public yVault;
-    ILossChecker public lossChecker;
+    ILossChecker public constant lossChecker = ILossChecker(0x6b6003d4Bc320Ed25E8E2be49600EC1006676239);
     uint256 public feeLossTolerance;
     uint256 public maxLoss;
     bool internal isOriginal = true;
@@ -49,10 +49,9 @@ contract RouterStrategy is BaseStrategy {
     constructor(
         address _vault,
         address _yVault,
-        address _lossChecker,
         string memory _strategyName
     ) public BaseStrategy(_vault) {
-        _initializeThis(_yVault, _strategyName, _lossChecker);
+        _initializeThis(_yVault, _strategyName);
     }
 
     event Cloned(address indexed clone);
@@ -63,7 +62,6 @@ contract RouterStrategy is BaseStrategy {
         address _rewards,
         address _keeper,
         address _yVault,
-        address _lossChecker,
         string memory _strategyName
     ) external virtual returns (address newStrategy) {
         require(isOriginal);
@@ -90,7 +88,6 @@ contract RouterStrategy is BaseStrategy {
             _rewards,
             _keeper,
             _yVault,
-            _lossChecker,
             _strategyName
         );
 
@@ -103,20 +100,18 @@ contract RouterStrategy is BaseStrategy {
         address _rewards,
         address _keeper,
         address _yVault,
-        address _lossChecker,
         string memory _strategyName
     ) public {
         _initialize(_vault, _strategist, _rewards, _keeper);
         require(address(yVault) == address(0));
-        _initializeThis(_yVault, _strategyName, _lossChecker);
+        _initializeThis(_yVault, _strategyName);
     }
 
-    function _initializeThis(address _yVault, string memory _strategyName, address _lossChecker)
+    function _initializeThis(address _yVault, string memory _strategyName)
         internal
     {
         yVault = IVault(_yVault);
         strategyName = _strategyName;
-        lossChecker = ILossChecker(_lossChecker);
         IERC20(address(want)).approve(_yVault, uint256(-1));
     }
 
